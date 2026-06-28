@@ -4,8 +4,9 @@ import { Card, EmptyState, Loading, PageHeader } from "../components/ui";
 import { formatMoney, formatDate, titleCase } from "../lib/format";
 
 const CATEGORIES = [
-  "groceries", "dining", "transport", "shopping", "subscriptions", "utilities",
-  "housing", "health", "income", "transfer", "atm", "fees", "uncategorized",
+  "groceries", "dining", "transport", "travel", "shopping", "subscriptions",
+  "entertainment", "utilities", "housing", "health", "insurance", "loans",
+  "income", "transfer", "atm", "fees", "uncategorized",
 ];
 
 export default function Transactions() {

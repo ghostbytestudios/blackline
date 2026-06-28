@@ -33,15 +33,29 @@ def list_transactions(
 
 
 @router.patch("/transactions/{txn_id}/category", response_model=TransactionOut)
-def set_category(txn_id: int, body: CategoryUpdate, db: Session = Depends(get_db)) -> Transaction:
+def set_category(
+    txn_id: int, body: CategoryUpdate, learn: bool = True, db: Session = Depends(get_db)
+) -> Transaction:
     txn = db.get(Transaction, txn_id)
     if txn is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
     txn.category = body.category
     txn.category_source = "user"  # protect from auto re-categorization
-    db.commit()
+    db.flush()
+    if learn:
+        # Turn this correction into a rule and propagate to similar auto transactions.
+        categorize.learn_from_correction(db, txn, body.category)
+    else:
+        db.commit()
     db.refresh(txn)
     return txn
+
+
+@router.post("/recategorize")
+def recategorize(db: Session = Depends(get_db)) -> dict:
+    """Re-apply current rules + built-in keywords to all auto-categorized transactions."""
+    changed = categorize.recategorize_all(db)
+    return {"transactions_recategorized": changed}
 
 
 @router.post("/rules", status_code=status.HTTP_201_CREATED)
