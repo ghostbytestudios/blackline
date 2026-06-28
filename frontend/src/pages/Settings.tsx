@@ -21,15 +21,55 @@ import { Card, PageHeader } from "../components/ui";
 import { formatDate } from "../lib/format";
 import { useQueryClient } from "@tanstack/react-query";
 
+/** A setup token is base64 of the SimpleFIN claim URL — sniff it so we can auto-fill. */
+function looksLikeSetupToken(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 40 || /\s/.test(t)) return false;
+  try {
+    return /simplefin.*\/claim\//i.test(atob(t));
+  } catch {
+    return false;
+  }
+}
+
 export default function Settings() {
   const { data: status } = useStatus();
   const connect = useConnect();
   const sync = useSync();
   const qc = useQueryClient();
   const [token, setToken] = useState("");
+  const [autoFilled, setAutoFilled] = useState(false);
 
   const connectErr = connect.error instanceof ApiError ? connect.error.message : null;
   const syncErr = sync.error instanceof ApiError ? sync.error.message : null;
+
+  const openBridge = () => {
+    window.open(
+      "https://bridge.simplefin.org/",
+      "simplefin-bridge",
+      "width=540,height=760,menubar=no,toolbar=no,location=yes,resizable=yes",
+    );
+  };
+
+  // When the user comes back from the Bridge popup, try to grab the token they
+  // copied straight from the clipboard so they don't have to paste it manually.
+  useEffect(() => {
+    if (status?.connected) return;
+    const grab = async () => {
+      if (token.trim().length > 0) return; // don't clobber manual input
+      try {
+        const text = await navigator.clipboard.readText();
+        if (looksLikeSetupToken(text)) {
+          setToken(text.trim());
+          setAutoFilled(true);
+        }
+      } catch {
+        // clipboard unavailable or denied — manual paste still works fine
+      }
+    };
+    window.addEventListener("focus", grab);
+    return () => window.removeEventListener("focus", grab);
+  }, [status?.connected, token]);
 
   const disconnect = async () => {
     await api.del("/connect");
@@ -95,16 +135,18 @@ export default function Settings() {
                   1
                 </span>
                 <div>
-                  <div>Open the SimpleFIN Bridge, connect your bank(s), and create a Setup Token.</div>
-                  <a
-                    href="https://bridge.simplefin.org/"
-                    target="_blank"
-                    rel="noreferrer"
+                  <div>
+                    Open the SimpleFIN Bridge, sign in to your bank(s), and copy the Setup Token.
+                    A Bridge account is ~$1.50/month (free trial) — that&apos;s paid to SimpleFIN,
+                    not us.
+                  </div>
+                  <button
+                    onClick={openBridge}
                     className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Open SimpleFIN Bridge
-                  </a>
+                  </button>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -112,14 +154,25 @@ export default function Settings() {
                   2
                 </span>
                 <div className="flex-1">
-                  <div className="mb-2">Paste the Setup Token here and connect. We&apos;ll sync automatically.</div>
+                  <div className="mb-2">
+                    Come back here — we&apos;ll grab the token from your clipboard automatically.
+                    Otherwise paste it below, then connect.
+                  </div>
                   <textarea
                     value={token}
-                    onChange={(e) => setToken(e.target.value)}
+                    onChange={(e) => {
+                      setToken(e.target.value);
+                      setAutoFilled(false);
+                    }}
                     rows={3}
                     placeholder="Paste SimpleFIN setup token…"
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   />
+                  {autoFilled && (
+                    <p className="mt-2 flex items-center gap-1 text-sm text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" /> Token detected from clipboard.
+                    </p>
+                  )}
                   {connectErr && (
                     <p className="mt-2 flex items-center gap-1 text-sm text-red-600">
                       <AlertCircle className="h-4 w-4" /> {connectErr}
