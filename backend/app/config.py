@@ -1,0 +1,69 @@
+"""Application configuration.
+
+Settings are env-driven with safe, local-first defaults. The defaults alone are
+sufficient to run securely on localhost; nothing here should ever widen network
+exposure without an explicit, deliberate change.
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="LEDGERLIGHT_",
+        extra="ignore",
+    )
+
+    # --- Storage ---
+    data_dir: Path = Field(default=BACKEND_ROOT / "data")
+
+    # --- Network (keep local!) ---
+    host: str = "127.0.0.1"
+    port: int = 8000
+    frontend_origin: str = "http://127.0.0.1:5173"
+
+    # --- Outbound egress allowlist ---
+    simplefin_allowed_host: str = "bridge.simplefin.org"
+
+    # --- Argon2id key-derivation parameters ---
+    argon2_time_cost: int = 3
+    argon2_memory_kib: int = 262_144  # 256 MiB
+    argon2_parallelism: int = 4
+
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "ledgerlight.sqlite3"
+
+    @property
+    def db_url(self) -> str:
+        return f"sqlite:///{self.db_path.as_posix()}"
+
+    @property
+    def salt_path(self) -> Path:
+        return self.data_dir / "vault.salt"
+
+    def ensure_dirs(self) -> None:
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+
+    def assert_local_only(self) -> None:
+        """Fail loudly if someone tries to expose the app beyond localhost."""
+        allowed = {"127.0.0.1", "localhost", "::1"}
+        if self.host not in allowed:
+            raise RuntimeError(
+                f"Refusing to start: host={self.host!r} is not localhost. "
+                "This app is local-only by design. Set LEDGERLIGHT_HOST=127.0.0.1."
+            )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
