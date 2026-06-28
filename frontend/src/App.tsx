@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useStatus } from "./hooks/useApi";
 import Sidebar from "./components/Sidebar";
 import LockScreen from "./components/LockScreen";
+import Tutorial from "./components/Tutorial";
 import Dashboard from "./pages/Dashboard";
 import Accounts from "./pages/Accounts";
 import Transactions from "./pages/Transactions";
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <Tutorial />
     </div>
   );
 }
