@@ -77,6 +77,39 @@ class HoldingOut(BaseModel):
     as_of: datetime | None
 
 
+class PortfolioHolding(BaseModel):
+    id: int
+    account_id: int
+    account_name: str
+    symbol: str | None
+    description: str | None
+    shares: str | None
+    market_value_minor: int | None
+    cost_basis_minor: int | None
+    currency: str
+    gain_minor: int | None = None
+    gain_pct: float | None = None
+
+
+class PortfolioSummary(BaseModel):
+    total_value_minor: int
+    total_cost_minor: int
+    total_gain_minor: int | None
+    gain_pct: float | None
+    holding_count: int
+    holdings: list[PortfolioHolding]
+
+
+class RecurringCharge(BaseModel):
+    name: str
+    category: str
+    cadence: str  # weekly | biweekly | monthly | quarterly | yearly | irregular
+    typical_amount_minor: int
+    occurrences: int
+    last_date: date
+    monthly_estimate_minor: int
+
+
 class CategoryUpdate(BaseModel):
     category: str = Field(min_length=1, max_length=64)
 

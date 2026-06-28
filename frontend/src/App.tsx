@@ -6,6 +6,8 @@ import Dashboard from "./pages/Dashboard";
 import Accounts from "./pages/Accounts";
 import Transactions from "./pages/Transactions";
 import Spending from "./pages/Spending";
+import Investments from "./pages/Investments";
+import Recurring from "./pages/Recurring";
 import NetWorth from "./pages/NetWorth";
 import Insights from "./pages/Insights";
 import Settings from "./pages/Settings";
@@ -47,6 +49,8 @@ export default function App() {
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/spending" element={<Spending />} />
+          <Route path="/investments" element={<Investments />} />
+          <Route path="/recurring" element={<Recurring />} />
           <Route path="/net-worth" element={<NetWorth />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/settings" element={<Settings />} />

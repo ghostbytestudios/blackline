@@ -6,7 +6,9 @@ import type {
   InsightCard,
   InsightsSummary,
   NetWorthPoint,
+  PortfolioSummary,
   Profile,
+  RecurringCharge,
   Status,
   SyncResult,
   Transaction,
@@ -104,6 +106,20 @@ export function useInsights(days = 90) {
   return useQuery({
     queryKey: ["insights", days],
     queryFn: () => api.get<InsightsSummary>(`/insights/summary?days=${days}`),
+  });
+}
+
+export function usePortfolio() {
+  return useQuery({
+    queryKey: ["portfolio"],
+    queryFn: () => api.get<PortfolioSummary>("/portfolio"),
+  });
+}
+
+export function useRecurring() {
+  return useQuery({
+    queryKey: ["recurring"],
+    queryFn: () => api.get<RecurringCharge[]>("/recurring"),
   });
 }
 

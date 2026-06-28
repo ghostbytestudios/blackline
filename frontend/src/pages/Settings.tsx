@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, RefreshCw, Link2, AlertCircle, KeyRound, DollarSign } from "lucide-react";
+import {
+  CheckCircle2,
+  RefreshCw,
+  Link2,
+  AlertCircle,
+  KeyRound,
+  DollarSign,
+  ExternalLink,
+} from "lucide-react";
 import {
   useChangePassphrase,
   useConnect,
@@ -81,40 +89,62 @@ export default function Settings() {
           </div>
         ) : (
           <div className="mt-4">
-            <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
-              <li>
-                Go to{" "}
-                <a
-                  href="https://bridge.simplefin.org/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-accent hover:underline"
-                >
-                  bridge.simplefin.org
-                </a>
-                , connect your bank, and create a <strong>Setup Token</strong>.
+            <ol className="mb-3 space-y-3 text-sm text-slate-600">
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">
+                  1
+                </span>
+                <div>
+                  <div>Open the SimpleFIN Bridge, connect your bank(s), and create a Setup Token.</div>
+                  <a
+                    href="https://bridge.simplefin.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open SimpleFIN Bridge
+                  </a>
+                </div>
               </li>
-              <li>Paste the token below. It is exchanged once for a read-only access token.</li>
+              <li className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">
+                  2
+                </span>
+                <div className="flex-1">
+                  <div className="mb-2">Paste the Setup Token here and connect. We&apos;ll sync automatically.</div>
+                  <textarea
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    rows={3}
+                    placeholder="Paste SimpleFIN setup token…"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                  {connectErr && (
+                    <p className="mt-2 flex items-center gap-1 text-sm text-red-600">
+                      <AlertCircle className="h-4 w-4" /> {connectErr}
+                    </p>
+                  )}
+                  <button
+                    onClick={() =>
+                      connect.mutate(token.trim(), { onSuccess: () => sync.mutate(90) })
+                    }
+                    disabled={connect.isPending || sync.isPending || token.trim().length === 0}
+                    className="mt-3 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {connect.isPending
+                      ? "Connecting…"
+                      : sync.isPending
+                        ? "Syncing…"
+                        : "Connect & Sync"}
+                  </button>
+                </div>
+              </li>
             </ol>
-            <textarea
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              rows={3}
-              placeholder="Paste SimpleFIN setup token…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-            {connectErr && (
-              <p className="mt-2 flex items-center gap-1 text-sm text-red-600">
-                <AlertCircle className="h-4 w-4" /> {connectErr}
-              </p>
-            )}
-            <button
-              onClick={() => connect.mutate(token.trim())}
-              disabled={connect.isPending || token.trim().length === 0}
-              className="mt-3 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {connect.isPending ? "Connecting…" : "Connect"}
-            </button>
+            <p className="text-xs text-slate-400">
+              The token is exchanged once for a read-only access token, encrypted at rest. To add
+              more banks later, connect them at the Bridge and just hit Sync — no new token needed.
+            </p>
           </div>
         )}
       </Card>

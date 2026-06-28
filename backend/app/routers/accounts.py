@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import require_unlocked
 from ..models import Account, AccountSetting, Holding
-from ..schemas import AccountOut, AccountSettingIn, HoldingOut
+from ..schemas import AccountOut, AccountSettingIn, HoldingOut, PortfolioSummary
+from ..services import portfolio as portfolio_service
 
 router = APIRouter(tags=["accounts"], dependencies=[Depends(require_unlocked)])
 
@@ -71,6 +72,11 @@ def update_settings(
     db.commit()
     db.refresh(setting)
     return _to_out(account, setting)
+
+
+@router.get("/portfolio", response_model=PortfolioSummary)
+def portfolio(db: Session = Depends(get_db)) -> PortfolioSummary:
+    return portfolio_service.build_portfolio(db)
 
 
 @router.get("/accounts/{account_id}/holdings", response_model=list[HoldingOut])

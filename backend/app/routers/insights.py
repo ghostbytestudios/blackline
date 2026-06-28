@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import require_unlocked
-from ..models import NetWorthSnapshot
-from ..schemas import InsightCard, InsightsSummary, NetWorthPoint
-from ..services import insights as insights_service
 from sqlalchemy import select
+
+from ..models import NetWorthSnapshot
+from ..schemas import InsightCard, InsightsSummary, NetWorthPoint, RecurringCharge
+from ..services import insights as insights_service
+from ..services import recurring as recurring_service
 
 router = APIRouter(tags=["insights"], dependencies=[Depends(require_unlocked)])
 
@@ -29,6 +31,11 @@ def cards(
     days: int = Query(default=180, ge=30, le=730),
 ) -> list[InsightCard]:
     return insights_service.build_insight_cards(db, days=days)
+
+
+@router.get("/recurring", response_model=list[RecurringCharge])
+def recurring(db: Session = Depends(get_db)) -> list[RecurringCharge]:
+    return recurring_service.detect_recurring(db)
 
 
 @router.get("/networth/history", response_model=list[NetWorthPoint])

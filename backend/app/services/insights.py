@@ -411,6 +411,27 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
                     )
                 )
 
+    # 5b) Recurring charges summary.
+    from .recurring import detect_recurring
+
+    recurring = detect_recurring(db)
+    if recurring:
+        monthly_total = sum(r.monthly_estimate_minor for r in recurring)
+        cards.append(
+            InsightCard(
+                id="recurring-summary",
+                title="Recurring Charges",
+                detail=(
+                    f"You have {len(recurring)} recurring charges totaling about "
+                    f"{_usd(monthly_total)}/month. Review them for anything you no longer use."
+                ),
+                severity="info",
+                icon="repeat",
+                action_label="View Recurring",
+                action_route="/recurring",
+            )
+        )
+
     # 6) Income-based guidance (50/30/20 and ratio rules) — only if income is set.
     from ..models import Profile
 

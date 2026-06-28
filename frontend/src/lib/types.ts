@@ -58,6 +58,39 @@ export interface BudgetStatus {
   spent_minor: number;
 }
 
+export interface PortfolioHolding {
+  id: number;
+  account_id: number;
+  account_name: string;
+  symbol: string | null;
+  description: string | null;
+  shares: string | null;
+  market_value_minor: number | null;
+  cost_basis_minor: number | null;
+  currency: string;
+  gain_minor: number | null;
+  gain_pct: number | null;
+}
+
+export interface PortfolioSummary {
+  total_value_minor: number;
+  total_cost_minor: number;
+  total_gain_minor: number | null;
+  gain_pct: number | null;
+  holding_count: number;
+  holdings: PortfolioHolding[];
+}
+
+export interface RecurringCharge {
+  name: string;
+  category: string;
+  cadence: string;
+  typical_amount_minor: number;
+  occurrences: number;
+  last_date: string;
+  monthly_estimate_minor: number;
+}
+
 export interface NetWorthPoint {
   as_of: string;
   net_worth_minor: number;
