@@ -31,6 +31,8 @@ STRUCTURAL: list[tuple[str, str]] = [
     ("autopay", "transfer"),
     ("ach pmt", "transfer"),
     ("ach transfer", "transfer"),
+    ("principal", "transfer"),  # loan principal payment: cash down + debt down = net-worth neutral
+    ("interest", "interest"),  # loan interest: a real expense (direction handled by account type)
     ("p&c", "insurance"),
     ("autopay insurance", "insurance"),
     ("overdraft", "fees"),

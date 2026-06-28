@@ -1,4 +1,16 @@
-"""Spending insights and trend analysis (computed locally over the SQLite store)."""
+"""Spending insights and trend analysis (computed locally over the SQLite store).
+
+Cash-flow is computed from the *user's* perspective, not each account's raw ledger sign,
+because liability accounts (loans, credit cards) sign transactions as balance changes:
+a loan payment is a positive (debt-reducing) entry even though it is cash leaving you.
+
+Classification rules (see `classify`):
+  - Internal movement (transfer / atm) is excluded from both income and spending.
+  - Asset accounts: positive = income, negative = spending.
+  - Liability accounts: every non-transfer entry is spending from your wallet
+    (loan interest, card purchases). Loan *principal* is categorized "transfer" and is
+    therefore excluded — paying principal is net-worth-neutral, not income or expense.
+"""
 
 from __future__ import annotations
 
@@ -11,8 +23,20 @@ from sqlalchemy.orm import Session
 from ..models import Account, Transaction
 from ..schemas import CategorySpend, InsightsSummary, MonthlyTrend
 
-# Categories that are not "spending" for habit analysis.
-NON_SPENDING = {"income", "transfer", "atm"}
+ASSET_TYPES = {"depository", "investment"}
+# Internal money movement — neither income nor spending.
+EXCLUDED_CATEGORIES = {"transfer", "atm"}
+
+
+def classify(amount_minor: int, account_type: str, category: str) -> tuple[int, int]:
+    """Return (inflow_minor, outflow_minor) from the user's cash-flow perspective."""
+    if category in EXCLUDED_CATEGORIES:
+        return 0, 0
+    if account_type in ASSET_TYPES:
+        return (amount_minor, 0) if amount_minor > 0 else (0, -amount_minor)
+    # Liability account: non-transfer activity is money out of your pocket
+    # (interest, card purchases). Principal payments are "transfer" and excluded above.
+    return 0, abs(amount_minor)
 
 
 def _net_worth_minor(db: Session) -> int:
@@ -26,6 +50,7 @@ def build_summary(db: Session, days: int = 90) -> InsightsSummary:
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
 
+    account_type = {a.id: a.account_type for a in db.scalars(select(Account))}
     rows = list(
         db.scalars(
             select(Transaction).where(
@@ -35,29 +60,31 @@ def build_summary(db: Session, days: int = 90) -> InsightsSummary:
         )
     )
 
-    total_inflow = sum(t.amount_minor for t in rows if t.amount_minor > 0)
-    total_outflow = sum(-t.amount_minor for t in rows if t.amount_minor < 0)
-
-    # Top spending categories (outflows, excluding non-spending categories).
+    total_inflow = 0
+    total_outflow = 0
     cat_totals: dict[str, list[int]] = defaultdict(lambda: [0, 0])  # [total, count]
+    monthly: dict[str, list[int]] = defaultdict(lambda: [0, 0])  # [inflow, outflow]
+
     for t in rows:
-        if t.amount_minor < 0 and t.category not in NON_SPENDING:
-            cat_totals[t.category][0] += -t.amount_minor
+        at = account_type.get(t.account_id, "depository")
+        inflow, outflow = classify(t.amount_minor, at, t.category)
+        total_inflow += inflow
+        total_outflow += outflow
+
+        key = t.posted_at.strftime("%Y-%m")
+        monthly[key][0] += inflow
+        monthly[key][1] += outflow
+
+        if outflow > 0:  # already excludes transfers/atm via classify
+            cat_totals[t.category][0] += outflow
             cat_totals[t.category][1] += 1
+
     top = sorted(
         (CategorySpend(category=c, total_minor=v[0], txn_count=v[1]) for c, v in cat_totals.items()),
         key=lambda x: x.total_minor,
         reverse=True,
     )[:10]
 
-    # Monthly trends.
-    monthly: dict[str, list[int]] = defaultdict(lambda: [0, 0])  # [inflow, outflow]
-    for t in rows:
-        key = t.posted_at.strftime("%Y-%m")
-        if t.amount_minor > 0:
-            monthly[key][0] += t.amount_minor
-        else:
-            monthly[key][1] += -t.amount_minor
     trends = [
         MonthlyTrend(month=m, inflow_minor=v[0], outflow_minor=v[1], net_minor=v[0] - v[1])
         for m, v in sorted(monthly.items())

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useAccounts, useSetCategory, useTransactions } from "../hooks/useApi";
 import { Card, EmptyState, Loading, PageHeader } from "../components/ui";
-import { formatMoney, formatDate, titleCase } from "../lib/format";
+import { formatMoney, formatDate, titleCase, cashFlowMinor } from "../lib/format";
 
 const CATEGORIES = [
   "groceries", "dining", "transport", "travel", "shopping", "subscriptions",
   "entertainment", "utilities", "housing", "health", "insurance", "loans",
-  "income", "transfer", "atm", "fees", "uncategorized",
+  "interest", "income", "transfer", "atm", "fees", "uncategorized",
 ];
 
 export default function Transactions() {
@@ -17,6 +17,7 @@ export default function Transactions() {
 
   const acctName = (id: number) =>
     accounts.data?.find((a) => a.id === id)?.name ?? "Account";
+  const acctType = (id: number) => accounts.data?.find((a) => a.id === id)?.account_type;
 
   return (
     <div>
@@ -80,13 +81,18 @@ export default function Transactions() {
                       ))}
                     </select>
                   </td>
-                  <td
-                    className={`whitespace-nowrap px-5 py-3 text-right font-mono font-semibold tnum ${
-                      t.amount_minor < 0 ? "text-red-500" : "text-emerald-600"
-                    }`}
-                  >
-                    {formatMoney(t.amount_minor)}
-                  </td>
+                  {(() => {
+                    const cf = cashFlowMinor(t.amount_minor, acctType(t.account_id));
+                    return (
+                      <td
+                        className={`whitespace-nowrap px-5 py-3 text-right font-mono font-semibold tnum ${
+                          cf < 0 ? "text-red-500" : "text-emerald-600"
+                        }`}
+                      >
+                        {formatMoney(cf)}
+                      </td>
+                    );
+                  })()}
                 </tr>
               ))}
             </tbody>

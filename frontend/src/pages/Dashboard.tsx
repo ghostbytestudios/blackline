@@ -9,7 +9,7 @@ import {
 import type { ReactNode } from "react";
 import { useAccounts, useInsights, useTransactions } from "../hooks/useApi";
 import { Card, CategoryChip, Loading } from "../components/ui";
-import { formatMoney, formatDate, formatPercent } from "../lib/format";
+import { formatMoney, formatDate, formatPercent, cashFlowMinor } from "../lib/format";
 import type { Account } from "../lib/types";
 
 function Kpi({
@@ -78,6 +78,7 @@ export default function Dashboard() {
 
   const accts: Account[] = accounts.data ?? [];
   const acctName = (id: number) => accts.find((a) => a.id === id)?.name ?? "Account";
+  const acctType = (id: number) => accts.find((a) => a.id === id)?.account_type;
   const assets = accts
     .filter((a) => a.balance_minor > 0)
     .reduce((sum, a) => sum + a.balance_minor, 0);
@@ -143,13 +144,18 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span
-                    className={`font-mono text-sm font-semibold tnum ${
-                      t.amount_minor < 0 ? "text-red-500" : "text-emerald-600"
-                    }`}
-                  >
-                    {formatMoney(t.amount_minor)}
-                  </span>
+                  {(() => {
+                    const cf = cashFlowMinor(t.amount_minor, acctType(t.account_id));
+                    return (
+                      <span
+                        className={`font-mono text-sm font-semibold tnum ${
+                          cf < 0 ? "text-red-500" : "text-emerald-600"
+                        }`}
+                      >
+                        {formatMoney(cf)}
+                      </span>
+                    );
+                  })()}
                   <CategoryChip category={t.category} />
                 </div>
               </div>

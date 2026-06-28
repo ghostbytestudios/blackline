@@ -3,6 +3,22 @@ export function fromMinor(minor: number): number {
   return minor / 100;
 }
 
+const LIABILITY_TYPES = new Set(["credit", "loan"]);
+
+/**
+ * Convert a raw transaction amount into a *cash-flow* amount from the user's
+ * perspective. Liability accounts (loans, credit cards) sign transactions as
+ * balance changes — a loan payment is positive (debt down) even though it is cash
+ * leaving you. From your wallet's view, money moving on a liability is an outflow,
+ * so we render it negative (red). Asset accounts keep their natural sign.
+ */
+export function cashFlowMinor(amountMinor: number, accountType: string | undefined): number {
+  if (accountType && LIABILITY_TYPES.has(accountType)) {
+    return -Math.abs(amountMinor);
+  }
+  return amountMinor;
+}
+
 export function formatMoney(minor: number | null | undefined, currency = "USD"): string {
   if (minor === null || minor === undefined) return "—";
   return new Intl.NumberFormat("en-US", {
