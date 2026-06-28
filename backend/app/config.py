@@ -19,7 +19,7 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
-        env_prefix="LEDGERLIGHT_",
+        env_prefix="VAULTCFO_",
         extra="ignore",
     )
 
@@ -40,14 +40,6 @@ class Settings(BaseSettings):
     argon2_parallelism: int = 4
 
     @property
-    def db_path(self) -> Path:
-        return self.data_dir / "ledgerlight.sqlite3"
-
-    @property
-    def db_url(self) -> str:
-        return f"sqlite:///{self.db_path.as_posix()}"
-
-    @property
     def salt_path(self) -> Path:
         return self.data_dir / "vault.salt"
 
@@ -65,7 +57,7 @@ class Settings(BaseSettings):
         if self.host not in allowed:
             raise RuntimeError(
                 f"Refusing to start: host={self.host!r} is not localhost. "
-                "This app is local-only by design. Set LEDGERLIGHT_HOST=127.0.0.1."
+                "This app is local-only by design. Set VAULTCFO_HOST=127.0.0.1."
             )
 
 

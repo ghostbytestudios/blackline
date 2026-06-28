@@ -15,6 +15,9 @@ from . import crypto
 # Well-known secret slot names.
 SIMPLEFIN_ACCESS_URL = "simplefin_access_url"
 VERIFIER = "passphrase_verifier"
+# Opaque, versioned constant encrypted under the key to validate the passphrase.
+# Its exact value is arbitrary but must remain stable — changing it invalidates the
+# verifier in any existing vault. (Legacy project codename; intentionally unchanged.)
 _VERIFIER_PLAINTEXT = b"ledgerlight-verifier-v1"
 
 
