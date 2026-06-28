@@ -13,7 +13,7 @@ from ..schemas import SetupTokenRequest, StatusResponse, SyncResult
 from ..security import vault
 from ..security.lock import app_lock
 from ..services import sync as sync_service
-from .auth import status as status_endpoint
+from .auth import build_status
 
 router = APIRouter(tags=["connect"], dependencies=[Depends(require_unlocked)])
 
@@ -30,7 +30,7 @@ def connect(body: SetupTokenRequest, db: Session = Depends(get_db)) -> StatusRes
     key = app_lock.require_key()
     vault.put_secret(db, key, vault.SIMPLEFIN_ACCESS_URL, access_url.encode("utf-8"))
     audit.record(db, "connect", detail="access url stored", success=True)
-    return status_endpoint(db)
+    return build_status()
 
 
 @router.delete("/connect", response_model=StatusResponse)
@@ -43,7 +43,7 @@ def disconnect(db: Session = Depends(get_db)) -> StatusResponse:
     db.execute(delete(Secret).where(Secret.name == vault.SIMPLEFIN_ACCESS_URL))
     db.commit()
     audit.record(db, "disconnect", success=True)
-    return status_endpoint(db)
+    return build_status()
 
 
 @router.post("/sync", response_model=SyncResult)

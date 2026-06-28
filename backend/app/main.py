@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
 from .config import get_settings
-from .db import init_db
+from .db import DatabaseLocked
 from .routers import accounts, auth, connect, insights, transactions
 
 settings = get_settings()
@@ -21,9 +22,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # The DB is encrypted and only opens on unlock, so nothing DB-related happens here.
     settings.assert_local_only()
     settings.ensure_dirs()
-    init_db()
     yield
 
 
@@ -52,6 +53,14 @@ async def security_headers(request: Request, call_next) -> Response:
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+@app.exception_handler(DatabaseLocked)
+async def _locked_handler(_request: Request, _exc: DatabaseLocked) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_423_LOCKED,
+        content={"detail": "Application is locked. Unlock with your passphrase."},
+    )
 
 
 @app.get("/health", tags=["meta"])

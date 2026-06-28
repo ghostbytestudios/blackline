@@ -11,8 +11,10 @@ stores everything on your own machine, and gives you spending insights and trend
   Bridge during an explicit, user-initiated sync. Otherwise the app is fully offline.
 - **No credential sharing, no scraping.** SimpleFIN gives a **read-only** access token.
   We never see, store, or transmit your bank username/password.
-- **Secrets encrypted at rest.** Your SimpleFIN access URL is encrypted with AES-256-GCM
-  using a key derived from your app passphrase (Argon2id). See [SECURITY.md](./SECURITY.md).
+- **Whole database encrypted at rest.** The entire database is stored only as an
+  AES-256-GCM-encrypted blob (`vaultcfo.db.enc`), keyed from your app passphrase
+  (Argon2id). While unlocked it lives in memory; no plaintext DB ever hits disk.
+  See [SECURITY.md](./SECURITY.md).
 
 ## Architecture
 

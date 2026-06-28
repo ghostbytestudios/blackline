@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     def salt_path(self) -> Path:
         return self.data_dir / "vault.salt"
 
+    @property
+    def db_enc_path(self) -> Path:
+        """Encrypted database blob (AES-256-GCM). The only on-disk form of the DB."""
+        return self.data_dir / "vaultcfo.db.enc"
+
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
 

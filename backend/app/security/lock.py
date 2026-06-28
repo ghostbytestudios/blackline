@@ -1,10 +1,9 @@
 """In-memory application lock.
 
-The app starts *locked*. The user must unlock with their passphrase, which derives
-the encryption key (held in memory only). Locking zeroizes the key reference.
-
-First unlock establishes the passphrase (writes the salt + verifier). Subsequent
-unlocks validate against the verifier.
+The app starts *locked*. Unlocking derives the encryption key from the passphrase and
+opens the encrypted database (decrypting it). A wrong passphrase fails to decrypt the
+DB blob, so it is rejected. First unlock creates a fresh encrypted DB and binds the
+passphrase via a verifier secret.
 """
 
 from __future__ import annotations
@@ -12,7 +11,7 @@ from __future__ import annotations
 import threading
 
 from ..config import get_settings
-from ..db import session_scope
+from ..db import secure_db, session_scope
 from . import crypto, vault
 
 
@@ -23,12 +22,12 @@ class AppLock:
 
     @property
     def is_initialized(self) -> bool:
-        """True once a passphrase has been established (salt file exists)."""
-        return get_settings().salt_path.exists()
+        """True once a vault has been established (encrypted DB exists)."""
+        return get_settings().db_enc_path.exists()
 
     @property
     def is_unlocked(self) -> bool:
-        return self._key is not None
+        return self._key is not None and secure_db.is_open
 
     def _load_or_create_salt(self) -> bytes:
         settings = get_settings()
@@ -36,30 +35,35 @@ class AppLock:
         if settings.salt_path.exists():
             return settings.salt_path.read_bytes()
         salt = crypto.generate_salt()
-        # Write atomically-ish; restrictive perms best-effort (Windows ACLs vary).
         settings.salt_path.write_bytes(salt)
         return salt
 
     def unlock(self, passphrase: str) -> bool:
-        """Unlock the vault. Returns True on success, False on wrong passphrase.
-
-        On first use (no verifier yet) this establishes the passphrase.
-        """
+        """Unlock the vault. Returns True on success, False on wrong passphrase."""
         with self._mutex:
             salt = self._load_or_create_salt()
             key = crypto.derive_key(passphrase, salt)
+
+            # Opening decrypts the DB; a wrong key fails authentication here.
+            try:
+                secure_db.open(key)
+            except crypto.DecryptionError:
+                return False
+
             with session_scope() as db:
                 if vault.has_secret(db, vault.VERIFIER):
                     if not vault.verify_key(db, key):
+                        secure_db.close()
                         return False
                 else:
-                    # First-time setup: bind this passphrase.
                     vault.write_verifier(db, key)
+
             self._key = key
             return True
 
     def lock(self) -> None:
         with self._mutex:
+            secure_db.close()
             self._key = None
 
     def require_key(self) -> bytes:

@@ -25,9 +25,12 @@ defend against, what we explicitly do *not*, and the controls in place.
 | Control | Implementation |
 |---|---|
 | Network exposure | Bind `127.0.0.1`; CORS limited to the local Vite origin |
-| Secret at rest | SimpleFIN access URL encrypted with **AES-256-GCM** |
+| **Whole-DB at rest** | Entire database encrypted with **AES-256-GCM**; persisted only as `vaultcfo.db.enc`. No plaintext DB file ever exists on disk. |
+| Secret at rest | SimpleFIN access URL additionally encrypted as a secret within that DB |
 | Key derivation | **Argon2id** from the app passphrase; per-install random salt |
 | Key handling | Derived key kept in memory only while unlocked; zeroized on lock |
+| DB in use | While unlocked the DB lives in an **in-memory** SQLite connection (`sqlite3.serialize/deserialize`); re-encrypted and rewritten atomically after every committed write |
+| Wrong passphrase | Fails authenticated decryption of the DB blob — there is no oracle/plaintext check to attack |
 | Setup token | Exchanged once, then discarded; never persisted |
 | Read-only by design | SimpleFIN tokens cannot initiate payments |
 | Input validation | All API inputs validated via Pydantic; SimpleFIN payloads normalized |
@@ -38,11 +41,17 @@ defend against, what we explicitly do *not*, and the controls in place.
 
 ## Known gaps / tradeoffs (be honest)
 
-- **Full-DB encryption is NOT yet enabled.** The transaction database itself is plain
-  SQLite. The *secret vault* (access URL) is encrypted, but transaction rows are not.
-  **Mitigation today:** enable **BitLocker** (full-disk encryption) on Windows.
-  **Upgrade path:** SQLCipher / SQLite encryption extension (deferred due to Python 3.14
-  native-build friction on Windows).
+- **Durability vs. crash window.** Because the DB lives in memory and is re-encrypted to
+  disk after each committed write, a hard crash *between* a commit and its disk flush could
+  lose the most recent write. For a single-user local app this window is tiny and
+  acceptable; the encrypted blob is written atomically (temp + `os.replace`) so it is never
+  left half-written/corrupt.
+- **Whole DB in RAM while unlocked.** Fine for personal-finance data sizes (thousands of
+  rows). Not intended for huge datasets.
+- **SQLCipher note.** A page-level encrypted store (SQLCipher) would avoid holding the whole
+  DB in memory, but has no prebuilt wheel for Python 3.14 on Windows. The serialize-based
+  approach gives equivalent at-rest protection without a native build. Revisit if a wheel
+  becomes available.
 - **Memory exposure.** While unlocked, the derived key and decrypted access URL live in
   process memory. A local attacker with admin/debugger access could read them. This is
   inherent to any local app; full-disk encryption + OS account security are the defense.
