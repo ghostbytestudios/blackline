@@ -58,6 +58,13 @@ export interface BudgetStatus {
   spent_minor: number;
 }
 
+export interface NetWorthPoint {
+  as_of: string;
+  net_worth_minor: number;
+  assets_minor: number;
+  liabilities_minor: number;
+}
+
 export interface InsightCard {
   id: string;
   title: string;

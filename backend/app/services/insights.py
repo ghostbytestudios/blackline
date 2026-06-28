@@ -86,6 +86,27 @@ def current_month_category_spend(db: Session) -> dict[str, int]:
     return out
 
 
+def record_snapshot(db: Session) -> None:
+    """Upsert today's net-worth snapshot from current balances (role-aware). Idempotent."""
+    from ..models import NetWorthSnapshot
+
+    today = datetime.now(timezone.utc).date()
+    eff = effective_account_types(db)
+    accounts = [a for a in db.scalars(select(Account)) if a.is_active]
+    assets = sum(a.balance_minor for a in accounts if eff.get(a.id) not in LIABILITY_TYPES)
+    liabilities = sum(-a.balance_minor for a in accounts if eff.get(a.id) in LIABILITY_TYPES)
+    net = sum(a.balance_minor for a in accounts)
+
+    snap = db.scalar(select(NetWorthSnapshot).where(NetWorthSnapshot.as_of == today))
+    if snap is None:
+        snap = NetWorthSnapshot(as_of=today)
+        db.add(snap)
+    snap.net_worth_minor = net
+    snap.assets_minor = int(assets)
+    snap.liabilities_minor = int(liabilities)
+    db.commit()
+
+
 def _net_worth_minor(db: Session) -> int:
     total = db.scalar(
         select(func.coalesce(func.sum(Account.balance_minor), 0)).where(Account.is_active.is_(True))

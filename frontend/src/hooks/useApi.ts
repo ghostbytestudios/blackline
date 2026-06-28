@@ -5,6 +5,7 @@ import type {
   BudgetStatus,
   InsightCard,
   InsightsSummary,
+  NetWorthPoint,
   Profile,
   Status,
   SyncResult,
@@ -103,6 +104,13 @@ export function useInsights(days = 90) {
   return useQuery({
     queryKey: ["insights", days],
     queryFn: () => api.get<InsightsSummary>(`/insights/summary?days=${days}`),
+  });
+}
+
+export function useNetWorthHistory() {
+  return useQuery({
+    queryKey: ["networth-history"],
+    queryFn: () => api.get<NetWorthPoint[]>("/networth/history"),
   });
 }
 

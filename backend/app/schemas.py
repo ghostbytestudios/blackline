@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -125,6 +125,13 @@ class MonthlyTrend(BaseModel):
     inflow_minor: int
     outflow_minor: int
     net_minor: int
+
+
+class NetWorthPoint(BaseModel):
+    as_of: date
+    net_worth_minor: int
+    assets_minor: int
+    liabilities_minor: int
 
 
 class InsightCard(BaseModel):

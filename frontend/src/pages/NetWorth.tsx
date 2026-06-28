@@ -6,57 +6,93 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useInsights } from "../hooks/useApi";
+import { useInsights, useNetWorthHistory } from "../hooks/useApi";
 import { Card, Loading, PageHeader } from "../components/ui";
-import { formatMoney, fromMinor } from "../lib/format";
+import { formatMoney, fromMinor, formatDate } from "../lib/format";
 
 export default function NetWorth() {
-  const { data, isLoading } = useInsights(365);
-  if (isLoading) return <Loading />;
-  const s = data;
+  const history = useNetWorthHistory();
+  const insights = useInsights(365);
+  if (history.isLoading) return <Loading />;
 
-  // We don't yet snapshot net worth over time, so we reconstruct an approximate
-  // trajectory by walking monthly net flows backward from the current net worth.
-  const trends = s?.monthly_trends ?? [];
-  const current = s?.net_worth_minor ?? 0;
-  let running = current;
-  const series = [...trends]
-    .reverse()
-    .map((m) => {
-      const point = { month: m.month, value: fromMinor(running) };
-      running -= m.net_minor;
-      return point;
-    })
-    .reverse();
+  const points = history.data ?? [];
+  const hasRealHistory = points.length >= 2;
+  const latest = points.at(-1);
+
+  // Real snapshot history when we have 2+ points; otherwise estimate from cash flow.
+  let series: { label: string; value: number }[];
+  let estimated = false;
+  if (hasRealHistory) {
+    series = points.map((p) => ({ label: formatDate(p.as_of), value: fromMinor(p.net_worth_minor) }));
+  } else {
+    estimated = true;
+    const trends = insights.data?.monthly_trends ?? [];
+    const current = latest?.net_worth_minor ?? insights.data?.net_worth_minor ?? 0;
+    let running = current;
+    series = [...trends]
+      .reverse()
+      .map((m) => {
+        const point = { label: m.month, value: fromMinor(running) };
+        running -= m.net_minor;
+        return point;
+      })
+      .reverse();
+  }
+
+  const current = latest?.net_worth_minor ?? insights.data?.net_worth_minor ?? 0;
 
   return (
     <div>
       <PageHeader title="Net Worth" />
+
+      <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <Card>
+          <div className="text-sm font-medium text-slate-500">Net Worth</div>
+          <div className="mt-1 font-mono text-3xl font-bold tnum text-slate-900">
+            {formatMoney(current)}
+          </div>
+        </Card>
+        <Card>
+          <div className="text-sm font-medium text-slate-500">Assets</div>
+          <div className="mt-1 font-mono text-3xl font-bold tnum text-emerald-600">
+            {formatMoney(latest?.assets_minor ?? 0)}
+          </div>
+        </Card>
+        <Card>
+          <div className="text-sm font-medium text-slate-500">Liabilities</div>
+          <div className="mt-1 font-mono text-3xl font-bold tnum text-red-500">
+            {formatMoney(latest?.liabilities_minor ?? 0)}
+          </div>
+        </Card>
+      </div>
+
       <Card>
-        <div className="text-sm font-medium text-slate-500">Current Net Worth</div>
-        <div className="mt-1 font-mono text-4xl font-bold tnum text-slate-900">
-          {formatMoney(current)}
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="font-semibold text-slate-900">History</h2>
+          <span className="text-xs text-slate-400">
+            {hasRealHistory ? `${points.length} daily snapshots` : "building history…"}
+          </span>
         </div>
-        <p className="mt-2 text-xs text-amber-600">
-          Trend is estimated from monthly cash flows. Precise history will appear once the app has
-          recorded balance snapshots over time.
-        </p>
-        <div className="mt-4">
-          <ResponsiveContainer width="100%" height={320}>
-            <AreaChart data={series}>
-              <defs>
-                <linearGradient id="nw" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="month" fontSize={12} />
-              <YAxis fontSize={12} />
-              <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
-              <Area type="monotone" dataKey="value" stroke="#2563eb" fill="url(#nw)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        {estimated && (
+          <p className="mb-2 text-xs text-amber-600">
+            Estimated from cash flow until enough daily snapshots accumulate. A real snapshot is
+            recorded each time you sync (and each day you open the app).
+          </p>
+        )}
+        <ResponsiveContainer width="100%" height={320}>
+          <AreaChart data={series}>
+            <defs>
+              <linearGradient id="nw" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="label" fontSize={12} />
+            <YAxis fontSize={12} />
+            <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
+            <Area type="monotone" dataKey="value" stroke="#2563eb" fill="url(#nw)" />
+          </AreaChart>
+        </ResponsiveContainer>
       </Card>
     </div>
   );

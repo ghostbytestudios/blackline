@@ -7,11 +7,12 @@ Domain notes:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -180,6 +181,19 @@ class Budget(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
+
+
+class NetWorthSnapshot(Base):
+    """Daily snapshot of net worth and its asset/liability split (one row per day)."""
+
+    __tablename__ = "networth_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    as_of: Mapped[date] = mapped_column(Date, unique=True, nullable=False)
+    net_worth_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    assets_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    liabilities_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class AuditLog(Base):

@@ -113,6 +113,9 @@ def run_sync(db: Session, lookback_days: int = 90) -> SyncResult:
             holdings_upserted += 1
 
     db.commit()
+    from .insights import record_snapshot
+
+    record_snapshot(db)  # capture a net-worth point from the freshly-synced balances
     audit.record(
         db,
         "sync",
