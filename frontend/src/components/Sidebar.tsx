@@ -68,7 +68,7 @@ export default function Sidebar() {
         </div>
         <button
           onClick={() => lock.mutate()}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-ink-800 hover:text-white"
+          className="flex w-full items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-ink-800 hover:text-white"
         >
           <Lock className="h-5 w-5" />
           Lock Vault
