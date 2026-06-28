@@ -63,6 +63,9 @@ export default function Sidebar() {
       </nav>
 
       <div className="border-t border-ink-700 p-3">
+        <div className="px-3 pb-2 text-center text-xs text-slate-500">
+          Powered by GhostByte Studios
+        </div>
         <button
           onClick={() => lock.mutate()}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-ink-800 hover:text-white"
