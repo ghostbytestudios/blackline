@@ -91,10 +91,13 @@ export function useUpdateAccountSettings() {
   });
 }
 
-export function useTransactions(params: { accountId?: number; category?: string } = {}) {
+export function useTransactions(
+  params: { accountId?: number; category?: string; limit?: number } = {},
+) {
   const search = new URLSearchParams();
   if (params.accountId) search.set("account_id", String(params.accountId));
   if (params.category) search.set("category", params.category);
+  if (params.limit) search.set("limit", String(params.limit));
   const qs = search.toString();
   return useQuery({
     queryKey: ["transactions", params],

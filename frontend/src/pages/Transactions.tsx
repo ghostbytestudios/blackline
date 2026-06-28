@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAccounts, useSetCategory, useTransactions } from "../hooks/useApi";
 import { Card, EmptyState, Loading, PageHeader } from "../components/ui";
 import { formatMoney, formatDate, titleCase, cashFlowMinor } from "../lib/format";
@@ -9,11 +10,41 @@ const CATEGORIES = [
   "interest", "income", "transfer", "atm", "fees", "uncategorized",
 ];
 
+const PAGE_SIZE = 25;
+
+/** Compact page-number window centered on the current page (with first/last). */
+function pageWindow(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | "…")[] = [1];
+  const lo = Math.max(2, current - 1);
+  const hi = Math.min(total - 1, current + 1);
+  if (lo > 2) pages.push("…");
+  for (let p = lo; p <= hi; p++) pages.push(p);
+  if (hi < total - 1) pages.push("…");
+  pages.push(total);
+  return pages;
+}
+
 export default function Transactions() {
   const [accountId, setAccountId] = useState<number | undefined>(undefined);
+  const [page, setPage] = useState(1);
   const accounts = useAccounts();
-  const { data, isLoading } = useTransactions({ accountId });
+  const { data, isLoading } = useTransactions({ accountId, limit: 1000 });
   const setCategory = useSetCategory();
+
+  const all = useMemo(() => data ?? [], [data]);
+  const total = all.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Reset to the first page whenever the account filter changes.
+  useEffect(() => setPage(1), [accountId]);
+  // Keep the page in range if the underlying list shrinks (e.g. after re-categorizing).
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const startIdx = (page - 1) * PAGE_SIZE;
+  const rows = all.slice(startIdx, startIdx + PAGE_SIZE);
 
   const acctName = (id: number) =>
     accounts.data?.find((a) => a.id === id)?.name ?? "Account";
@@ -41,7 +72,7 @@ export default function Transactions() {
 
       {isLoading ? (
         <Loading />
-      ) : (data ?? []).length === 0 ? (
+      ) : total === 0 ? (
         <EmptyState title="No transactions" hint="Sync an account to populate your ledger." />
       ) : (
         <Card className="overflow-hidden p-0">
@@ -56,7 +87,7 @@ export default function Transactions() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {(data ?? []).map((t) => (
+              {rows.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
                   <td className="whitespace-nowrap px-5 py-3 text-slate-500">
                     {formatDate(t.posted_at)}
@@ -97,6 +128,49 @@ export default function Transactions() {
               ))}
             </tbody>
           </table>
+
+          <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-sm sm:flex-row">
+            <span className="text-slate-500">
+              Showing {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, total)} of {total}
+            </span>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Prev
+                </button>
+                {pageWindow(page, totalPages).map((p, i) =>
+                  p === "…" ? (
+                    <span key={`gap-${i}`} className="px-1.5 text-slate-400">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`min-w-[2rem] rounded-lg px-2.5 py-1.5 font-medium ${
+                        p === page
+                          ? "bg-accent text-white"
+                          : "border border-slate-300 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </Card>
       )}
     </div>
