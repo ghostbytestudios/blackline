@@ -19,7 +19,7 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
-        env_prefix="VAULTCFO_",
+        env_prefix="BLACKLINE_",
         extra="ignore",
     )
 
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     @property
     def db_enc_path(self) -> Path:
         """Encrypted database blob (AES-256-GCM). The only on-disk form of the DB."""
-        return self.data_dir / "vaultcfo.db.enc"
+        return self.data_dir / "blackline.db.enc"
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
         if self.host not in allowed:
             raise RuntimeError(
                 f"Refusing to start: host={self.host!r} is not localhost. "
-                "This app is local-only by design. Set VAULTCFO_HOST=127.0.0.1."
+                "This app is local-only by design. Set BLACKLINE_HOST=127.0.0.1."
             )
 
 

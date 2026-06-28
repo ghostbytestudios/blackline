@@ -25,7 +25,7 @@ defend against, what we explicitly do *not*, and the controls in place.
 | Control | Implementation |
 |---|---|
 | Network exposure | Bind `127.0.0.1`; CORS limited to the local Vite origin |
-| **Whole-DB at rest** | Entire database encrypted with **AES-256-GCM**; persisted only as `vaultcfo.db.enc`. No plaintext DB file ever exists on disk. |
+| **Whole-DB at rest** | Entire database encrypted with **AES-256-GCM**; persisted only as `blackline.db.enc`. No plaintext DB file ever exists on disk. |
 | Secret at rest | SimpleFIN access URL additionally encrypted as a secret within that DB |
 | Key derivation | **Argon2id** from the app passphrase; per-install random salt |
 | Key handling | Derived key kept in memory only while unlocked; zeroized on lock |

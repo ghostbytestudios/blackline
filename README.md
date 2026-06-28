@@ -1,14 +1,14 @@
-# VaultCFO
+# Blackline
 
 **Your private, local-first personal finance dashboard.**
 
-VaultCFO aggregates your bank and investment accounts, then shows you spending
+Blackline aggregates your bank and investment accounts, then shows you spending
 trends, budgets, net worth, recurring charges, and tailored insights — all running
 entirely on your own machine. Your financial data never leaves your computer except
 during a sync you explicitly trigger, and even then only a single read-only request
 goes out to the account aggregator you connected.
 
-> ⚠️ **Not financial advice.** VaultCFO is a personal tool for visualizing your own
+> ⚠️ **Not financial advice.** Blackline is a personal tool for visualizing your own
 > money. Its budgeting guidance (50/30/20, debt-to-income, etc.) consists of common
 > rules of thumb, not professional advice. It comes with **no warranty** (see [License](#license)).
 
@@ -16,7 +16,7 @@ goes out to the account aggregator you connected.
 
 ## Table of contents
 
-- [Why VaultCFO](#why-vaultcfo)
+- [Why Blackline](#why-blackline)
 - [Features](#features)
 - [Security at a glance](#security-at-a-glance)
 - [What you need before you start](#what-you-need-before-you-start)
@@ -35,16 +35,16 @@ goes out to the account aggregator you connected.
 
 ---
 
-## Why VaultCFO
+## Why Blackline
 
 Most personal-finance apps require you to hand your data — and often your bank
-login — to a company's cloud. VaultCFO takes the opposite approach:
+login — to a company's cloud. Blackline takes the opposite approach:
 
 - **It runs only on `127.0.0.1`.** There is no hosted server, no account on someone
   else's infrastructure, nothing exposed to your network or the internet.
 - **It never sees your bank password.** Account linking happens on the
   [SimpleFIN Bridge](https://www.simplefin.org/), which hands back a *read-only*
-  access token. VaultCFO can read balances and transactions; it can never move money.
+  access token. Blackline can read balances and transactions; it can never move money.
 - **Everything is encrypted at rest.** The entire database lives on disk only as a
   single AES-256-GCM-encrypted blob, unlocked by a passphrase that only you know.
 
@@ -54,7 +54,7 @@ login — to a company's cloud. VaultCFO takes the opposite approach:
 
 - **Dashboard** — net worth, monthly spending vs. income, savings rate, and recent activity at a glance.
 - **Accounts** — label each account (checking, savings, investment, credit, loan…) and set savings goals with progress bars.
-- **Transactions** — automatically categorized; correct one and VaultCFO *learns a rule* and applies it to every similar charge.
+- **Transactions** — automatically categorized; correct one and Blackline *learns a rule* and applies it to every similar charge.
 - **Spending & budgets** — category breakdowns, income-vs-spending trends, and inline-editable monthly budgets (with a one-click "suggest from income" using 50/30/20).
 - **Investments** — holdings, allocation, and portfolio value.
 - **Recurring** — auto-detects subscriptions and recurring charges so you can catch what you no longer use.
@@ -69,9 +69,9 @@ login — to a company's cloud. VaultCFO takes the opposite approach:
 | Control | How |
 |---|---|
 | Network exposure | Server binds `127.0.0.1` only and **refuses to start** on any non-localhost host. CORS limited to the local frontend. |
-| Encryption at rest | Whole database stored only as an **AES-256-GCM** blob (`vaultcfo.db.enc`). No plaintext database file ever touches disk. |
+| Encryption at rest | Whole database stored only as an **AES-256-GCM** blob (`blackline.db.enc`). No plaintext database file ever touches disk. |
 | Key derivation | **Argon2id** (memory-hard) from your passphrase + a per-install random salt. The key lives in memory only while unlocked. |
-| Credentials | Your bank login is handled by SimpleFIN, never by VaultCFO. The read-only access token is itself encrypted inside the vault. |
+| Credentials | Your bank login is handled by SimpleFIN, never by Blackline. The read-only access token is itself encrypted inside the vault. |
 | Egress | Exactly one outbound destination (the SimpleFIN Bridge host), only during a sync you start. |
 
 The full threat model — including known trade-offs — is in **[SECURITY.md](./SECURITY.md)**.
@@ -95,14 +95,14 @@ The full threat model — including known trade-offs — is in **[SECURITY.md](.
 
 ## The cost: SimpleFIN
 
-VaultCFO itself is free and open source. To pull in **real** account data it relies on
+Blackline itself is free and open source. To pull in **real** account data it relies on
 the **[SimpleFIN Bridge](https://bridge.simplefin.org/)**, a third-party service that
 securely connects to your banks and exposes a read-only feed.
 
 - SimpleFIN Bridge costs about **$1.50/month** (with a free trial).
-- That fee is paid **to SimpleFIN, not to this project** — VaultCFO never handles payments.
+- That fee is paid **to SimpleFIN, not to this project** — Blackline never handles payments.
 - **You** create the Bridge account and link your banks there. This is by design: it's
-  the privacy boundary that keeps your bank credentials out of VaultCFO entirely.
+  the privacy boundary that keeps your bank credentials out of Blackline entirely.
 
 If you just want to explore the app, you can run it without connecting anything and
 poke around the empty UI.
@@ -114,8 +114,8 @@ poke around the empty UI.
 Clone the repo, then start the backend and frontend in two terminals.
 
 ```bash
-git clone <your-fork-url> vaultcfo
-cd vaultcfo
+git clone <your-fork-url> blackline
+cd blackline
 ```
 
 ### 1. Backend (FastAPI)
@@ -168,7 +168,7 @@ backend on port 8000.
 
 ## First launch — create your vault
 
-On first run there is no data and no passphrase yet. VaultCFO will prompt you to
+On first run there is no data and no passphrase yet. Blackline will prompt you to
 **create a passphrase** (minimum 8 characters). This passphrase:
 
 - Encrypts your entire local database.
@@ -184,12 +184,12 @@ After creating it, you're in. The app starts empty until you connect an account.
 1. Go to **Settings → Bank Connection** and click **Open SimpleFIN Bridge**. A focused
    popup opens the Bridge.
 2. In the Bridge: create/sign in to your SimpleFIN account, **connect your bank(s)**
-   (this is where you log into your bank — VaultCFO never sees this), and generate a
+   (this is where you log into your bank — Blackline never sees this), and generate a
    **Setup Token**. Copy it.
-3. Return to VaultCFO. It will **auto-detect the token from your clipboard** and pre-fill
+3. Return to Blackline. It will **auto-detect the token from your clipboard** and pre-fill
    it (you'll see a green "Token detected" confirmation). If your browser blocks
    clipboard access, just paste it manually.
-4. Click **Connect & Sync**. VaultCFO exchanges the one-time setup token for a
+4. Click **Connect & Sync**. Blackline exchanges the one-time setup token for a
    read-only access URL, encrypts it, and pulls your accounts and transactions.
 
 To add more banks later, link them at the Bridge and just hit **Sync now** — no new
@@ -226,7 +226,7 @@ otherwise fully offline.
 
 All of your data lives in **`backend/data/`**:
 
-- `vaultcfo.db.enc` — your encrypted database.
+- `blackline.db.enc` — your encrypted database.
 - `vault.salt` — the salt used to derive your key.
 
 **Both files are required to decrypt**, and both are excluded from git. To back up,
@@ -239,25 +239,25 @@ safe to store on external/cloud storage — but your passphrase is still the onl
 ## Configuration
 
 All settings are optional and read from environment variables (or a `backend/.env`
-file), prefixed with `VAULTCFO_`. The defaults are secure for local use.
+file), prefixed with `BLACKLINE_`. The defaults are secure for local use.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VAULTCFO_DATA_DIR` | `data` | Where the encrypted DB + salt are stored. |
-| `VAULTCFO_HOST` | `127.0.0.1` | Bind address. **Must stay localhost** — the app refuses to start otherwise. |
-| `VAULTCFO_PORT` | `8000` | Backend port. |
-| `VAULTCFO_FRONTEND_ORIGIN` | `http://127.0.0.1:5173` | Allowed CORS origin. |
-| `VAULTCFO_SIMPLEFIN_ALLOWED_HOST` | `bridge.simplefin.org` | The only permitted outbound host. |
-| `VAULTCFO_ARGON2_TIME_COST` | `3` | Argon2id iterations. |
-| `VAULTCFO_ARGON2_MEMORY_KIB` | `262144` | Argon2id memory (256 MiB). |
-| `VAULTCFO_ARGON2_PARALLELISM` | `4` | Argon2id lanes. |
+| `BLACKLINE_DATA_DIR` | `data` | Where the encrypted DB + salt are stored. |
+| `BLACKLINE_HOST` | `127.0.0.1` | Bind address. **Must stay localhost** — the app refuses to start otherwise. |
+| `BLACKLINE_PORT` | `8000` | Backend port. |
+| `BLACKLINE_FRONTEND_ORIGIN` | `http://127.0.0.1:5173` | Allowed CORS origin. |
+| `BLACKLINE_SIMPLEFIN_ALLOWED_HOST` | `bridge.simplefin.org` | The only permitted outbound host. |
+| `BLACKLINE_ARGON2_TIME_COST` | `3` | Argon2id iterations. |
+| `BLACKLINE_ARGON2_MEMORY_KIB` | `262144` | Argon2id memory (256 MiB). |
+| `BLACKLINE_ARGON2_PARALLELISM` | `4` | Argon2id lanes. |
 
 ---
 
 ## Project structure
 
 ```
-vaultcfo/
+blackline/
 ├── backend/                 FastAPI app (Python)
 │   ├── app/
 │   │   ├── config.py        Env-driven settings, localhost enforcement
@@ -284,7 +284,7 @@ vaultcfo/
 
 - **"Cannot reach the backend."** The frontend is up but the API isn't. Make sure
   `uvicorn app.main:app` is running on `127.0.0.1:8000` in your backend terminal.
-- **The app refuses to start with a host error.** `VAULTCFO_HOST` is set to something
+- **The app refuses to start with a host error.** `BLACKLINE_HOST` is set to something
   other than localhost. This is intentional — set it back to `127.0.0.1`.
 - **Clipboard token didn't auto-fill.** Your browser blocked clipboard access. Just
   paste the token into the box manually; it works the same.
@@ -308,7 +308,7 @@ vaultcfo/
 
 ## Contributing
 
-Contributions are welcome. If you fork or extend VaultCFO, please **keep the security
+Contributions are welcome. If you fork or extend Blackline, please **keep the security
 posture intact**: localhost-only binding, read-only aggregation, no credential storage,
 and encryption at rest. Open an issue or PR with a clear description of the change.
 
@@ -316,7 +316,7 @@ and encryption at rest. Open an issue or PR with a clear description of the chan
 
 ## License
 
-VaultCFO is licensed under the **GNU General Public License v3.0**. See [LICENSE](./LICENSE).
+Blackline is licensed under the **GNU General Public License v3.0**. See [LICENSE](./LICENSE).
 
 In short: you may use, study, share, and modify this software, but any distributed
 derivative must also be released under the GPLv3. The software is provided **with no

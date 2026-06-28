@@ -2,7 +2,7 @@
 
 The database is **never written to disk in plaintext**. While unlocked it lives in an
 in-memory SQLite connection; it is persisted only as an AES-256-GCM-encrypted blob
-(`vaultcfo.db.enc`) produced via `sqlite3.Connection.serialize()` (stdlib, Python 3.11+).
+(`blackline.db.enc`) produced via `sqlite3.Connection.serialize()` (stdlib, Python 3.11+).
 
 Lifecycle:
   locked  -> no connection, no sessions possible
@@ -29,6 +29,9 @@ from sqlalchemy.pool import StaticPool
 from .config import get_settings
 from .security import crypto
 
+# AAD bound to the encrypted DB blob. This value is an opaque, versioned tag and must
+# stay stable forever — changing the bytes makes any existing vault undecryptable.
+# (Legacy codename, intentionally left unchanged through the Blackline rename.)
 _DB_AAD = b"vaultcfo-db-v1"
 
 

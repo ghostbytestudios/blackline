@@ -22,7 +22,7 @@ export default function LockScreen() {
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
         <div className="mb-6 flex flex-col items-center text-center">
           <ShieldCheck className="h-10 w-10 text-accent" />
-          <h1 className="mt-3 text-xl font-bold text-slate-900">VaultCFO</h1>
+          <h1 className="mt-3 text-xl font-bold text-slate-900">Blackline</h1>
           <p className="mt-1 text-sm text-slate-500">
             {firstTime ? "Create a passphrase to secure your vault" : "Unlock your local vault"}
           </p>

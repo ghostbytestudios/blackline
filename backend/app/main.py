@@ -29,7 +29,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="VaultCFO",
+    title="Blackline",
     description="Local-only personal finance dashboard.",
     version="0.1.0",
     lifespan=lifespan,

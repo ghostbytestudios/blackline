@@ -32,7 +32,7 @@ export default function Sidebar() {
     <aside className="flex h-screen w-64 shrink-0 flex-col bg-ink-900 text-slate-300">
       <div className="flex items-center gap-2 px-5 py-5 text-white">
         <ShieldCheck className="h-6 w-6 text-accent-soft" />
-        <span className="text-lg font-bold tracking-tight">VaultCFO</span>
+        <span className="text-lg font-bold tracking-tight">Blackline</span>
       </div>
 
       <div className="px-5 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">

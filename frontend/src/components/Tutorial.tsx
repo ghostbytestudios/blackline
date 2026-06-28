@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const STORAGE_KEY = "vaultcfo.tutorial.v1";
+const STORAGE_KEY = "blackline.tutorial.v1";
 
 type Step = {
   icon: LucideIcon;
@@ -29,7 +29,7 @@ type Step = {
 const STEPS: Step[] = [
   {
     icon: ShieldCheck,
-    title: "Welcome to VaultCFO",
+    title: "Welcome to Blackline",
     body: "Your private, local-first finance dashboard. Everything lives encrypted on this machine — the app only reaches the internet when you choose to sync. Here's a 1-minute tour.",
   },
   {
@@ -56,7 +56,7 @@ const STEPS: Step[] = [
   {
     icon: ArrowLeftRight,
     title: "Transactions that learn",
-    body: "Transactions are auto-categorized. Fix one category and VaultCFO remembers — it creates a rule and applies it to every similar charge automatically.",
+    body: "Transactions are auto-categorized. Fix one category and Blackline remembers — it creates a rule and applies it to every similar charge automatically.",
     route: "/transactions",
     action: "Open Transactions",
   },

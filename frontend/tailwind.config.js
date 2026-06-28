@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Dark navy sidebar / surfaces from the VaultCFO reference.
+        // Dark navy sidebar / surfaces from the Blackline reference.
         ink: {
           900: "#0b1220",
           800: "#111a2e",
