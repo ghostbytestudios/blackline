@@ -114,7 +114,7 @@ poke around the empty UI.
 Clone the repo, then start the backend and frontend in two terminals.
 
 ```bash
-git clone <your-fork-url> blackline
+git clone https://github.com/ghostbytestudios/blackline.git
 cd blackline
 ```
 
