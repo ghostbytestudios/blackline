@@ -79,6 +79,14 @@ class CategoryRuleIn(BaseModel):
     priority: int = 100
 
 
+class ProfileIn(BaseModel):
+    gross_annual_income_minor: int = Field(ge=0, le=1_000_000_000_00)
+
+
+class ProfileOut(BaseModel):
+    gross_annual_income_minor: int
+
+
 class BudgetIn(BaseModel):
     category: str = Field(min_length=1, max_length=64)
     limit_minor: int = Field(ge=0)

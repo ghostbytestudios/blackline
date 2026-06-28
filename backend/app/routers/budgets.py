@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import require_unlocked
-from ..models import Budget
+from ..models import Budget, Profile
 from ..schemas import BudgetIn, BudgetStatus
 from ..services import insights as insights_service
+from ..services.insights import RECOMMENDED_ALLOCATION
 
 router = APIRouter(tags=["budgets"], dependencies=[Depends(require_unlocked)])
 
@@ -37,6 +38,26 @@ def upsert_budget(body: BudgetIn, db: Session = Depends(get_db)) -> BudgetStatus
     return BudgetStatus(
         category=body.category, limit_minor=body.limit_minor, spent_minor=spend.get(body.category, 0)
     )
+
+
+@router.post("/budgets/suggest", response_model=list[BudgetStatus])
+def suggest_budgets(db: Session = Depends(get_db)) -> list[BudgetStatus]:
+    """Create recommended budgets from gross income (50/30/20-style). Does not overwrite
+    budgets you've already set."""
+    profile = db.get(Profile, 1)
+    gross = profile.gross_annual_income_minor if profile else 0
+    if gross <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Set your gross annual income in Settings first.",
+        )
+    monthly = gross / 12
+    existing = {b.category for b in db.scalars(select(Budget))}
+    for category, fraction in RECOMMENDED_ALLOCATION.items():
+        if category not in existing:
+            db.add(Budget(category=category, limit_minor=round(monthly * fraction)))
+    db.commit()
+    return list_budgets(db)
 
 
 @router.delete("/budgets/{category}", status_code=status.HTTP_204_NO_CONTENT)

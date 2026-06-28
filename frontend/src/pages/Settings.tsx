@@ -1,6 +1,13 @@
-import { useState } from "react";
-import { CheckCircle2, RefreshCw, Link2, AlertCircle, KeyRound } from "lucide-react";
-import { useChangePassphrase, useConnect, useStatus, useSync } from "../hooks/useApi";
+import { useEffect, useState } from "react";
+import { CheckCircle2, RefreshCw, Link2, AlertCircle, KeyRound, DollarSign } from "lucide-react";
+import {
+  useChangePassphrase,
+  useConnect,
+  useProfile,
+  useSetProfile,
+  useStatus,
+  useSync,
+} from "../hooks/useApi";
 import { api, ApiError } from "../lib/api";
 import { Card, PageHeader } from "../components/ui";
 import { formatDate } from "../lib/format";
@@ -25,7 +32,9 @@ export default function Settings() {
     <div className="max-w-2xl">
       <PageHeader title="Settings" />
 
-      <Card>
+      <IncomeCard />
+
+      <Card className="mt-5">
         <div className="flex items-center gap-2 font-semibold text-slate-900">
           <Link2 className="h-5 w-5 text-accent" />
           Bank Connection (SimpleFIN)
@@ -121,6 +130,59 @@ export default function Settings() {
         </p>
       </Card>
     </div>
+  );
+}
+
+function IncomeCard() {
+  const { data: profile } = useProfile();
+  const setProfile = useSetProfile();
+  const [val, setVal] = useState("");
+
+  useEffect(() => {
+    if (profile && profile.gross_annual_income_minor > 0) {
+      setVal(String(profile.gross_annual_income_minor / 100));
+    }
+  }, [profile]);
+
+  const save = () => {
+    const dollars = parseFloat(val);
+    if (isNaN(dollars) || dollars < 0) return;
+    setProfile.mutate(Math.round(dollars * 100));
+  };
+
+  return (
+    <Card>
+      <div className="flex items-center gap-2 font-semibold text-slate-900">
+        <DollarSign className="h-5 w-5 text-accent" />
+        Income
+      </div>
+      <p className="mt-2 text-sm text-slate-500">
+        Your gross annual income powers budgeting guidance (50/30/20, plus housing, car, and
+        debt-to-income ratios) and the "Suggest budgets" feature.
+      </p>
+      <div className="mt-4 flex items-center gap-2">
+        <div className="relative">
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
+          <input
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && save()}
+            inputMode="decimal"
+            placeholder="75000"
+            className="w-40 rounded-lg border border-slate-300 py-2 pl-5 pr-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+        </div>
+        <span className="text-sm text-slate-400">/ year (gross)</span>
+        <button
+          onClick={save}
+          disabled={setProfile.isPending}
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          Save
+        </button>
+        {setProfile.isSuccess && <span className="text-sm text-emerald-600">Saved.</span>}
+      </div>
+    </Card>
   );
 }
 

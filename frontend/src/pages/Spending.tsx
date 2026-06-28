@@ -12,7 +12,15 @@ import {
 } from "recharts";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import { useBudgets, useDeleteBudget, useInsights, useSetBudget } from "../hooks/useApi";
+import { Sparkles } from "lucide-react";
+import {
+  useBudgets,
+  useDeleteBudget,
+  useInsights,
+  useProfile,
+  useSetBudget,
+  useSuggestBudgets,
+} from "../hooks/useApi";
 import { Card, EmptyState, Loading, PageHeader } from "../components/ui";
 import { formatMoney, fromMinor, titleCase } from "../lib/format";
 
@@ -23,11 +31,14 @@ const BUDGET_CATEGORIES = [
 
 function Budgets() {
   const { data: budgets } = useBudgets();
+  const { data: profile } = useProfile();
   const setBudget = useSetBudget();
   const delBudget = useDeleteBudget();
+  const suggest = useSuggestBudgets();
   const [newCat, setNewCat] = useState("groceries");
   const [newAmt, setNewAmt] = useState("");
 
+  const hasIncome = (profile?.gross_annual_income_minor ?? 0) > 0;
   const rows = budgets ?? [];
   const used = new Set(rows.map((b) => b.category));
   const available = BUDGET_CATEGORIES.filter((c) => !used.has(c));
@@ -41,7 +52,20 @@ function Budgets() {
 
   return (
     <Card>
-      <h2 className="mb-3 font-semibold text-slate-900">Monthly Budgets</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-semibold text-slate-900">Monthly Budgets</h2>
+        {hasIncome && (
+          <button
+            onClick={() => suggest.mutate()}
+            disabled={suggest.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-blue-50 disabled:opacity-50"
+            title="Fill in recommended budgets from your income (won't overwrite existing)"
+          >
+            <Sparkles className="h-4 w-4" />
+            {suggest.isPending ? "Suggesting…" : "Suggest from income"}
+          </button>
+        )}
+      </div>
       {rows.length === 0 ? (
         <p className="mb-4 text-sm text-slate-400">
           No budgets yet. Add one below to get over-budget alerts in Insights.

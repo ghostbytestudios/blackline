@@ -27,6 +27,22 @@ ASSET_TYPES = {"depository", "investment"}
 # Internal money movement — neither income nor spending.
 EXCLUDED_CATEGORIES = {"transfer", "atm"}
 
+# 50/30/20 buckets for category spending.
+NEEDS_CATEGORIES = {"housing", "utilities", "groceries", "transport", "insurance", "health"}
+WANTS_CATEGORIES = {"dining", "entertainment", "shopping", "travel", "subscriptions"}
+DEBT_CATEGORIES = {"loans", "interest"}  # debt service counts toward the 20% bucket
+
+# Estimated take-home as a fraction of gross (used for the car/take-home guideline).
+TAKE_HOME_FRACTION = 0.75
+
+# Recommended monthly budget as a fraction of gross income (a 50/30/20-style starting point).
+RECOMMENDED_ALLOCATION = {
+    "housing": 0.30, "utilities": 0.08, "groceries": 0.10, "transport": 0.10,
+    "insurance": 0.05, "health": 0.05,  # needs
+    "dining": 0.06, "entertainment": 0.04, "shopping": 0.05, "travel": 0.03,
+    "subscriptions": 0.02,  # wants
+}
+
 
 def classify(amount_minor: int, account_type: str, category: str) -> tuple[int, int]:
     """Return (inflow_minor, outflow_minor) from the user's cash-flow perspective."""
@@ -353,6 +369,101 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
                         action_route="/spending",
                     )
                 )
+
+    # 6) Income-based guidance (50/30/20 and ratio rules) — only if income is set.
+    from ..models import Profile
+
+    profile = db.get(Profile, 1)
+    gross_monthly = (profile.gross_annual_income_minor / 12) if profile else 0
+    if gross_monthly > 0:
+        cur_spend = {cat: cat_month.get((cur, cat), 0) for _, cat in cat_month if _ == cur}
+        take_home = gross_monthly * TAKE_HOME_FRACTION
+
+        # Housing <= 30% of gross.
+        housing = cur_spend.get("housing", 0)
+        if housing > 0:
+            hp = housing / gross_monthly * 100
+            if hp > 30:
+                cards.append(
+                    InsightCard(
+                        id="guide-housing",
+                        title="Housing Above 30% Guideline",
+                        detail=(
+                            f"Housing is {_usd(housing)}/mo — {hp:.0f}% of gross income. The common "
+                            "guideline is 30% or less; trimming here frees up the most room."
+                        ),
+                        severity="critical" if hp > 40 else "warning",
+                        icon="trending-up",
+                        action_label="View Spending",
+                        action_route="/spending",
+                    )
+                )
+
+        # Car / transportation <= 10% of take-home.
+        transport = cur_spend.get("transport", 0)
+        if transport > 0 and take_home > 0:
+            tp = transport / take_home * 100
+            if tp > 10:
+                cards.append(
+                    InsightCard(
+                        id="guide-transport",
+                        title="Transportation Costs Above Guideline",
+                        detail=(
+                            f"Transportation is {_usd(transport)}/mo — {tp:.0f}% of estimated "
+                            "take-home. Keeping total car costs near 10% leaves more for savings."
+                        ),
+                        severity="warning",
+                        icon="trending-up",
+                        action_label="View Transactions",
+                        action_route="/transactions",
+                    )
+                )
+
+        # Total debt payments <= 36% of gross (DTI), housing + loans + interest.
+        debt = housing + sum(cur_spend.get(c, 0) for c in DEBT_CATEGORIES)
+        if debt > 0:
+            dti = debt / gross_monthly * 100
+            if dti > 36:
+                cards.append(
+                    InsightCard(
+                        id="guide-dti",
+                        title="Debt-to-Income Above 36%",
+                        detail=(
+                            f"Housing + debt payments are {_usd(debt)}/mo — {dti:.0f}% of gross "
+                            "income. Lenders flag a debt-to-income ratio above 36%."
+                        ),
+                        severity="critical" if dti > 43 else "warning",
+                        icon="trending-up",
+                        action_label="View Net Worth",
+                        action_route="/net-worth",
+                    )
+                )
+
+        # 50/30/20 reality check.
+        needs = sum(cur_spend.get(c, 0) for c in NEEDS_CATEGORIES)
+        wants = sum(cur_spend.get(c, 0) for c in WANTS_CATEGORIES)
+        total_spend = monthly_out[cur]
+        savings = gross_monthly - total_spend  # implied surplus (savings + leftover)
+        np_, wp, sp = (
+            needs / gross_monthly * 100,
+            wants / gross_monthly * 100,
+            savings / gross_monthly * 100,
+        )
+        off_track = np_ > 60 or wp > 40 or sp < 10
+        cards.append(
+            InsightCard(
+                id="guide-503020",
+                title="50/30/20 Check" + (" — Off Target" if off_track else ""),
+                detail=(
+                    f"This month: needs {np_:.0f}%, wants {wp:.0f}%, savings {sp:.0f}% of gross "
+                    "income. The 50/30/20 starting point is 50% needs, 30% wants, 20% savings."
+                ),
+                severity="warning" if off_track else "info",
+                icon="activity",
+                action_label="View Spending",
+                action_route="/spending",
+            )
+        )
 
     cards.sort(key=lambda c: _SEV_RANK.get(c.severity, 9))
     return cards

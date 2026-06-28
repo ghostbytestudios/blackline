@@ -45,6 +45,10 @@ export interface MonthlyTrend {
   net_minor: number;
 }
 
+export interface Profile {
+  gross_annual_income_minor: number;
+}
+
 export interface BudgetStatus {
   category: string;
   limit_minor: number;

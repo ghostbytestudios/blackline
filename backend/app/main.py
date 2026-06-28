@@ -15,7 +15,7 @@ from starlette.responses import Response
 
 from .config import get_settings
 from .db import DatabaseLocked
-from .routers import accounts, auth, budgets, connect, insights, transactions
+from .routers import accounts, auth, budgets, connect, insights, profile, transactions
 
 settings = get_settings()
 
@@ -75,6 +75,7 @@ for r in (
     transactions.router,
     insights.router,
     budgets.router,
+    profile.router,
 ):
     app.include_router(r, prefix="/api")
 

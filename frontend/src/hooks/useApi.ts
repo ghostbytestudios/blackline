@@ -5,6 +5,7 @@ import type {
   BudgetStatus,
   InsightCard,
   InsightsSummary,
+  Profile,
   Status,
   SyncResult,
   Transaction,
@@ -114,6 +115,33 @@ export function useDeleteBudget() {
     mutationFn: (category: string) => api.del<void>(`/budgets/${encodeURIComponent(category)}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["budgets"] });
+      qc.invalidateQueries({ queryKey: ["insight-cards"] });
+    },
+  });
+}
+
+export function useSuggestBudgets() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<BudgetStatus[]>("/budgets/suggest"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      qc.invalidateQueries({ queryKey: ["insight-cards"] });
+    },
+  });
+}
+
+export function useProfile() {
+  return useQuery({ queryKey: ["profile"], queryFn: () => api.get<Profile>("/profile") });
+}
+
+export function useSetProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (gross_annual_income_minor: number) =>
+      api.put<Profile>("/profile", { gross_annual_income_minor }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["insight-cards"] });
     },
   });
