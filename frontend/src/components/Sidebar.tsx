@@ -25,7 +25,7 @@ const nav = [
 export default function Sidebar() {
   const lock = useLock();
   return (
-    <aside className="flex w-64 flex-col bg-ink-900 text-slate-300">
+    <aside className="flex h-screen w-64 shrink-0 flex-col bg-ink-900 text-slate-300">
       <div className="flex items-center gap-2 px-5 py-5 text-white">
         <ShieldCheck className="h-6 w-6 text-accent-soft" />
         <span className="text-lg font-bold tracking-tight">VaultCFO</span>
@@ -58,23 +58,14 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-ink-700 p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-ink-700 text-sm font-semibold text-white">
-            JD
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium text-white">John Doe</div>
-            <div className="text-xs text-slate-500">Local Vault</div>
-          </div>
-          <button
-            title="Lock vault"
-            onClick={() => lock.mutate()}
-            className="rounded-md p-2 text-slate-400 hover:bg-ink-800 hover:text-white"
-          >
-            <Lock className="h-4 w-4" />
-          </button>
-        </div>
+      <div className="border-t border-ink-700 p-3">
+        <button
+          onClick={() => lock.mutate()}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-ink-800 hover:text-white"
+        >
+          <Lock className="h-5 w-5" />
+          Lock Vault
+        </button>
       </div>
     </aside>
   );

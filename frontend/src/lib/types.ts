@@ -45,6 +45,16 @@ export interface MonthlyTrend {
   net_minor: number;
 }
 
+export interface InsightCard {
+  id: string;
+  title: string;
+  detail: string;
+  severity: "critical" | "warning" | "info";
+  icon: string;
+  action_label: string | null;
+  action_route: string | null;
+}
+
 export interface InsightsSummary {
   range_start: string;
   range_end: string;

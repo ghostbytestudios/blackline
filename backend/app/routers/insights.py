@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import require_unlocked
-from ..schemas import InsightsSummary
+from ..schemas import InsightCard, InsightsSummary
 from ..services import insights as insights_service
 
 router = APIRouter(tags=["insights"], dependencies=[Depends(require_unlocked)])
@@ -19,3 +19,11 @@ def summary(
     days: int = Query(default=90, ge=7, le=730),
 ) -> InsightsSummary:
     return insights_service.build_summary(db, days=days)
+
+
+@router.get("/insights/cards", response_model=list[InsightCard])
+def cards(
+    db: Session = Depends(get_db),
+    days: int = Query(default=180, ge=30, le=730),
+) -> list[InsightCard]:
+    return insights_service.build_insight_cards(db, days=days)

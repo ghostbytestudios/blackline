@@ -39,7 +39,7 @@ export default function App() {
   if (!status?.unlocked) return <LockScreen />;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-y-auto bg-slate-50 px-8 py-7">
         <Routes>

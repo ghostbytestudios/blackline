@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import type {
   Account,
+  InsightCard,
   InsightsSummary,
   Status,
   SyncResult,
@@ -80,6 +81,13 @@ export function useInsights(days = 90) {
   return useQuery({
     queryKey: ["insights", days],
     queryFn: () => api.get<InsightsSummary>(`/insights/summary?days=${days}`),
+  });
+}
+
+export function useInsightCards(days = 180) {
+  return useQuery({
+    queryKey: ["insight-cards", days],
+    queryFn: () => api.get<InsightCard[]>(`/insights/cards?days=${days}`),
   });
 }
 

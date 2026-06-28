@@ -100,6 +100,16 @@ class MonthlyTrend(BaseModel):
     net_minor: int
 
 
+class InsightCard(BaseModel):
+    id: str
+    title: str
+    detail: str
+    severity: str  # "critical" | "warning" | "info"
+    icon: str  # hint for the frontend icon
+    action_label: str | None = None
+    action_route: str | None = None
+
+
 class InsightsSummary(BaseModel):
     range_start: datetime
     range_end: datetime
