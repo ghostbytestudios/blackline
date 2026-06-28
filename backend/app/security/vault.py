@@ -45,6 +45,19 @@ def write_verifier(db: Session, key: bytes) -> None:
     put_secret(db, key, VERIFIER, _VERIFIER_PLAINTEXT)
 
 
+def rekey_secrets(db: Session, old_key: bytes, new_key: bytes) -> int:
+    """Re-encrypt every stored secret from old_key to new_key. Returns count re-encrypted.
+
+    The caller is responsible for committing (and for ordering the DB-blob re-key).
+    """
+    count = 0
+    for row in db.scalars(select(Secret)):
+        plaintext = crypto.decrypt(old_key, row.nonce, row.ciphertext, aad=row.name.encode("utf-8"))
+        row.nonce, row.ciphertext = crypto.encrypt(new_key, plaintext, aad=row.name.encode("utf-8"))
+        count += 1
+    return count
+
+
 def verify_key(db: Session, key: bytes) -> bool:
     """Return True if `key` correctly decrypts the verifier (i.e. passphrase is right)."""
     try:

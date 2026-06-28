@@ -16,6 +16,11 @@ class SetupTokenRequest(BaseModel):
     setup_token: str = Field(min_length=1, max_length=8192)
 
 
+class ChangePassphraseRequest(BaseModel):
+    current_passphrase: str = Field(min_length=1, max_length=1024)
+    new_passphrase: str = Field(min_length=8, max_length=1024)
+
+
 class StatusResponse(BaseModel):
     initialized: bool
     unlocked: bool

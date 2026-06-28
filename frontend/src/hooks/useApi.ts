@@ -28,6 +28,18 @@ export function useLock() {
   });
 }
 
+export function useChangePassphrase() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: { current: string; next: string }) =>
+      api.post<Status>("/change-passphrase", {
+        current_passphrase: b.current,
+        new_passphrase: b.next,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["status"] }),
+  });
+}
+
 export function useConnect() {
   const qc = useQueryClient();
   return useMutation({

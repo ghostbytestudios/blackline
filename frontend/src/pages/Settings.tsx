@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CheckCircle2, RefreshCw, Link2, AlertCircle } from "lucide-react";
-import { useConnect, useStatus, useSync } from "../hooks/useApi";
+import { CheckCircle2, RefreshCw, Link2, AlertCircle, KeyRound } from "lucide-react";
+import { useChangePassphrase, useConnect, useStatus, useSync } from "../hooks/useApi";
 import { api, ApiError } from "../lib/api";
 import { Card, PageHeader } from "../components/ui";
 import { formatDate } from "../lib/format";
@@ -110,6 +110,8 @@ export default function Settings() {
         )}
       </Card>
 
+      <ChangePassphraseCard />
+
       <Card className="mt-5">
         <div className="font-semibold text-slate-900">Security</div>
         <p className="mt-2 text-sm text-slate-600">
@@ -119,5 +121,79 @@ export default function Settings() {
         </p>
       </Card>
     </div>
+  );
+}
+
+function ChangePassphraseCard() {
+  const change = useChangePassphrase();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+
+  const mismatch = next.length > 0 && confirm.length > 0 && next !== confirm;
+  const canSubmit = current.length >= 1 && next.length >= 8 && next === confirm && !change.isPending;
+  const err = change.error instanceof ApiError ? change.error.message : null;
+
+  const submit = () => {
+    change.mutate(
+      { current, next },
+      {
+        onSuccess: () => {
+          setCurrent("");
+          setNext("");
+          setConfirm("");
+        },
+      },
+    );
+  };
+
+  return (
+    <Card className="mt-5">
+      <div className="flex items-center gap-2 font-semibold text-slate-900">
+        <KeyRound className="h-5 w-5 text-accent" />
+        Change Passphrase
+      </div>
+      <p className="mt-2 text-sm text-slate-500">
+        Re-encrypts your vault under a new passphrase. There is no recovery — if you forget it,
+        the data cannot be decrypted.
+      </p>
+      <div className="mt-4 max-w-sm space-y-3">
+        <input
+          type="password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+          placeholder="Current passphrase"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        <input
+          type="password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          placeholder="New passphrase (min 8 chars)"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        <input
+          type="password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          placeholder="Confirm new passphrase"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        {mismatch && <p className="text-sm text-red-600">New passphrases do not match.</p>}
+        {err && (
+          <p className="flex items-center gap-1 text-sm text-red-600">
+            <AlertCircle className="h-4 w-4" /> {err}
+          </p>
+        )}
+        {change.isSuccess && <p className="text-sm text-emerald-600">Passphrase updated.</p>}
+        <button
+          onClick={submit}
+          disabled={!canSubmit}
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {change.isPending ? "Updating…" : "Update passphrase"}
+        </button>
+      </div>
+    </Card>
   );
 }

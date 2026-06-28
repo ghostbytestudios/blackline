@@ -8,6 +8,7 @@ passphrase via a verifier secret.
 
 from __future__ import annotations
 
+import hmac
 import threading
 
 from ..config import get_settings
@@ -59,6 +60,33 @@ class AppLock:
                     vault.write_verifier(db, key)
 
             self._key = key
+            return True
+
+    def change_passphrase(self, current_passphrase: str, new_passphrase: str) -> bool:
+        """Re-key the vault to a new passphrase. Returns False if current is wrong.
+
+        Keeps the per-install salt constant so the DB blob is the only file that changes,
+        making the operation atomic/crash-safe (see SecureDatabase.rekey).
+        """
+        with self._mutex:
+            if self._key is None or not secure_db.is_open:
+                raise LockedError("unlock before changing the passphrase")
+
+            salt = get_settings().salt_path.read_bytes()
+            # Constant-time check that the supplied current passphrase is correct.
+            if not hmac.compare_digest(crypto.derive_key(current_passphrase, salt), self._key):
+                return False
+
+            new_key = crypto.derive_key(new_passphrase, salt)
+
+            # 1) Re-encrypt secrets in memory WITHOUT persisting under the old key.
+            with secure_db.paused_persistence():
+                with session_scope() as db:
+                    vault.rekey_secrets(db, self._key, new_key)
+
+            # 2) Atomically rewrite the DB blob under the new key (single on-disk mutation).
+            secure_db.rekey(new_key)
+            self._key = new_key
             return True
 
     def lock(self) -> None:

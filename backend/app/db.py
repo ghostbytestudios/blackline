@@ -47,6 +47,7 @@ class SecureDatabase:
         self._sessionmaker: sessionmaker | None = None
         self._key: bytes | None = None
         self._io_lock = threading.Lock()
+        self._suspend_persist = False
 
     @property
     def is_open(self) -> bool:
@@ -95,6 +96,27 @@ class SecureDatabase:
         return fresh
 
     def _on_commit(self, _session: Session) -> None:
+        if not self._suspend_persist:
+            self.persist()
+
+    @contextmanager
+    def paused_persistence(self) -> Iterator[None]:
+        """Temporarily suppress auto-persist (used during an atomic re-key)."""
+        self._suspend_persist = True
+        try:
+            yield
+        finally:
+            self._suspend_persist = False
+
+    def rekey(self, new_key: bytes) -> None:
+        """Switch the at-rest encryption key and atomically rewrite the blob under it.
+
+        Crash-safety: the salt is unchanged, so this single atomic write is the only
+        on-disk mutation. Before it lands, the old blob (old key) remains fully valid;
+        after it lands, the new blob (new key) is fully valid. There is no inconsistent
+        intermediate on disk.
+        """
+        self._key = new_key
         self.persist()
 
     def persist(self) -> None:

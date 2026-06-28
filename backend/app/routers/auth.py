@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status as http_status
+from fastapi import APIRouter, Depends, HTTPException, status as http_status
 from sqlalchemy import func, select
 
 from .. import audit
 from ..db import read_scope
 from ..models import Account, AuditLog
-from ..schemas import StatusResponse, UnlockRequest
+from ..deps import require_unlocked
+from ..schemas import ChangePassphraseRequest, StatusResponse, UnlockRequest
 from ..security import vault
 from ..security.lock import app_lock
 
@@ -57,6 +58,20 @@ def unlock(body: UnlockRequest) -> StatusResponse:
     # DB is open now; record the successful unlock (commit persists the blob).
     with read_scope() as db:
         audit.record(db, "unlock", success=True)
+    return build_status()
+
+
+@router.post("/change-passphrase", response_model=StatusResponse)
+def change_passphrase(
+    body: ChangePassphraseRequest, _: None = Depends(require_unlocked)
+) -> StatusResponse:
+    ok = app_lock.change_passphrase(body.current_passphrase, body.new_passphrase)
+    with read_scope() as db:
+        audit.record(db, "change_passphrase", success=ok)
+    if not ok:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED, detail="Current passphrase is incorrect."
+        )
     return build_status()
 
 
