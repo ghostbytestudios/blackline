@@ -15,7 +15,7 @@ from starlette.responses import Response
 
 from .config import get_settings
 from .db import DatabaseLocked
-from .routers import accounts, auth, connect, insights, transactions
+from .routers import accounts, auth, budgets, connect, insights, transactions
 
 settings = get_settings()
 
@@ -68,7 +68,14 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-for r in (auth.router, connect.router, accounts.router, transactions.router, insights.router):
+for r in (
+    auth.router,
+    connect.router,
+    accounts.router,
+    transactions.router,
+    insights.router,
+    budgets.router,
+):
     app.include_router(r, prefix="/api")
 
 

@@ -39,6 +39,21 @@ def classify(amount_minor: int, account_type: str, category: str) -> tuple[int, 
     return 0, abs(amount_minor)
 
 
+def current_month_category_spend(db: Session) -> dict[str, int]:
+    """Outflow per category for the current calendar month (user cash-flow view)."""
+    now = datetime.now(timezone.utc)
+    start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    account_type = {a.id: a.account_type for a in db.scalars(select(Account))}
+    out: dict[str, int] = defaultdict(int)
+    for t in db.scalars(
+        select(Transaction).where(Transaction.posted_at >= start, Transaction.pending.is_(False))
+    ):
+        _, outflow = classify(t.amount_minor, account_type.get(t.account_id, "depository"), t.category)
+        if outflow > 0:
+            out[t.category] += outflow
+    return out
+
+
 def _net_worth_minor(db: Session) -> int:
     total = db.scalar(
         select(func.coalesce(func.sum(Account.balance_minor), 0)).where(Account.is_active.is_(True))
@@ -291,6 +306,53 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
                 action_route="/transactions",
             )
         )
+
+    # 5) Budget alerts: over budget, or on track to exceed at the current pace.
+    import calendar as _calendar
+
+    from ..models import Budget
+
+    budgets = {b.category: b.limit_minor for b in db.scalars(select(Budget)) if b.limit_minor > 0}
+    if budgets and cur == now_month:
+        days_in_month = _calendar.monthrange(end.year, end.month)[1]
+        day = max(end.day, 1)
+        for cat, limit in budgets.items():
+            spent = cat_month.get((cur, cat), 0)
+            if spent <= 0:
+                continue
+            pct = spent / limit * 100
+            projected = spent / day * days_in_month
+            if spent > limit:
+                cards.append(
+                    InsightCard(
+                        id=f"budget-over-{cat}",
+                        title=f"{cat.title()} Over Budget",
+                        detail=(
+                            f"You've spent {_usd(spent)} on {cat.title()} this month — "
+                            f"{pct:.0f}% of your {_usd(limit)} budget, {_usd(spent - limit)} over."
+                        ),
+                        severity="critical",
+                        icon="shopping",
+                        action_label="View Spending",
+                        action_route="/spending",
+                    )
+                )
+            elif projected > limit * 1.05:
+                cards.append(
+                    InsightCard(
+                        id=f"budget-pace-{cat}",
+                        title=f"{cat.title()} Over Budget",
+                        detail=(
+                            f"You've spent {_usd(spent)} on {cat.title()} this month, "
+                            f"{pct:.0f}% of your {_usd(limit)} budget. At this pace you're on "
+                            f"track to exceed it by {_usd(projected - limit)}."
+                        ),
+                        severity="warning",
+                        icon="shopping",
+                        action_label="View Spending",
+                        action_route="/spending",
+                    )
+                )
 
     cards.sort(key=lambda c: _SEV_RANK.get(c.severity, 9))
     return cards

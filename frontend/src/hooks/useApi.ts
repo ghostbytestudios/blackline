@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import type {
   Account,
+  BudgetStatus,
   InsightCard,
   InsightsSummary,
   Status,
@@ -88,6 +89,33 @@ export function useInsightCards(days = 180) {
   return useQuery({
     queryKey: ["insight-cards", days],
     queryFn: () => api.get<InsightCard[]>(`/insights/cards?days=${days}`),
+  });
+}
+
+export function useBudgets() {
+  return useQuery({ queryKey: ["budgets"], queryFn: () => api.get<BudgetStatus[]>("/budgets") });
+}
+
+export function useSetBudget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: { category: string; limit_minor: number }) =>
+      api.put<BudgetStatus>("/budgets", b),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      qc.invalidateQueries({ queryKey: ["insight-cards"] });
+    },
+  });
+}
+
+export function useDeleteBudget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (category: string) => api.del<void>(`/budgets/${encodeURIComponent(category)}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      qc.invalidateQueries({ queryKey: ["insight-cards"] });
+    },
   });
 }
 

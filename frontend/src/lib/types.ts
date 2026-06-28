@@ -45,6 +45,12 @@ export interface MonthlyTrend {
   net_minor: number;
 }
 
+export interface BudgetStatus {
+  category: string;
+  limit_minor: number;
+  spent_minor: number;
+}
+
 export interface InsightCard {
   id: string;
   title: string;

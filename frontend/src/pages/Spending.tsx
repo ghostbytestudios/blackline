@@ -10,9 +10,112 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useInsights } from "../hooks/useApi";
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
+import { useBudgets, useDeleteBudget, useInsights, useSetBudget } from "../hooks/useApi";
 import { Card, EmptyState, Loading, PageHeader } from "../components/ui";
 import { formatMoney, fromMinor, titleCase } from "../lib/format";
+
+const BUDGET_CATEGORIES = [
+  "groceries", "dining", "transport", "travel", "shopping", "subscriptions",
+  "entertainment", "utilities", "housing", "health", "insurance", "fees",
+];
+
+function Budgets() {
+  const { data: budgets } = useBudgets();
+  const setBudget = useSetBudget();
+  const delBudget = useDeleteBudget();
+  const [newCat, setNewCat] = useState("groceries");
+  const [newAmt, setNewAmt] = useState("");
+
+  const rows = budgets ?? [];
+  const used = new Set(rows.map((b) => b.category));
+  const available = BUDGET_CATEGORIES.filter((c) => !used.has(c));
+
+  const add = () => {
+    const dollars = parseFloat(newAmt);
+    if (!newCat || isNaN(dollars) || dollars <= 0) return;
+    setBudget.mutate({ category: newCat, limit_minor: Math.round(dollars * 100) });
+    setNewAmt("");
+  };
+
+  return (
+    <Card>
+      <h2 className="mb-3 font-semibold text-slate-900">Monthly Budgets</h2>
+      {rows.length === 0 ? (
+        <p className="mb-4 text-sm text-slate-400">
+          No budgets yet. Add one below to get over-budget alerts in Insights.
+        </p>
+      ) : (
+        <div className="mb-4 space-y-3">
+          {rows.map((b) => {
+            const pct = b.limit_minor > 0 ? (b.spent_minor / b.limit_minor) * 100 : 0;
+            const over = b.spent_minor > b.limit_minor;
+            const barColor = over ? "bg-red-500" : pct >= 80 ? "bg-amber-400" : "bg-accent";
+            return (
+              <div key={b.category}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-slate-700">{titleCase(b.category)}</span>
+                  <div className="flex items-center gap-3">
+                    <span className={`font-mono tnum ${over ? "text-red-500" : "text-slate-500"}`}>
+                      {formatMoney(b.spent_minor)} / {formatMoney(b.limit_minor)}
+                    </span>
+                    <button
+                      onClick={() => delBudget.mutate(b.category)}
+                      className="text-slate-300 hover:text-red-500"
+                      title="Remove budget"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full ${barColor}`}
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {available.length > 0 && (
+        <div className="flex items-center gap-2">
+          <select
+            value={newCat}
+            onChange={(e) => setNewCat(e.target.value)}
+            className="rounded-lg border border-slate-300 px-2 py-2 text-sm"
+          >
+            {available.map((c) => (
+              <option key={c} value={c}>
+                {titleCase(c)}
+              </option>
+            ))}
+          </select>
+          <div className="relative">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
+            <input
+              value={newAmt}
+              onChange={(e) => setNewAmt(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+              inputMode="decimal"
+              placeholder="500"
+              className="w-28 rounded-lg border border-slate-300 py-2 pl-5 pr-2 text-sm"
+            />
+          </div>
+          <button
+            onClick={add}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Add budget
+          </button>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 const COLORS = [
   "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#16a34a",
@@ -21,7 +124,6 @@ const COLORS = [
 
 export default function Spending() {
   const { data, isLoading } = useInsights(120);
-  if (isLoading) return <Loading />;
   const s = data;
   const cats = s?.top_categories ?? [];
 
@@ -35,7 +137,12 @@ export default function Spending() {
   return (
     <div>
       <PageHeader title="Spending Analysis" />
-      {cats.length === 0 ? (
+      <div className="mb-5">
+        <Budgets />
+      </div>
+      {isLoading ? (
+        <Loading />
+      ) : cats.length === 0 ? (
         <EmptyState title="No spending data yet" hint="Sync transactions to see category breakdowns." />
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

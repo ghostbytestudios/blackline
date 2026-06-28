@@ -79,6 +79,17 @@ class CategoryRuleIn(BaseModel):
     priority: int = 100
 
 
+class BudgetIn(BaseModel):
+    category: str = Field(min_length=1, max_length=64)
+    limit_minor: int = Field(ge=0)
+
+
+class BudgetStatus(BaseModel):
+    category: str
+    limit_minor: int
+    spent_minor: int  # current calendar month
+
+
 class SyncResult(BaseModel):
     accounts_upserted: int
     transactions_inserted: int
