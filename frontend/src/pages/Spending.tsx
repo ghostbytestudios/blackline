@@ -10,9 +10,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Trash2, Sparkles } from "lucide-react";
 import {
   useBudgets,
   useDeleteBudget,
@@ -23,6 +22,65 @@ import {
 } from "../hooks/useApi";
 import { Card, EmptyState, Loading, PageHeader } from "../components/ui";
 import { formatMoney, fromMinor, titleCase } from "../lib/format";
+import type { BudgetStatus } from "../lib/types";
+
+function BudgetRow({ budget }: { budget: BudgetStatus }) {
+  const setBudget = useSetBudget();
+  const delBudget = useDeleteBudget();
+  const [limit, setLimit] = useState(String(budget.limit_minor / 100));
+
+  // Keep the input in sync if the budget changes elsewhere (e.g. suggest).
+  useEffect(() => setLimit(String(budget.limit_minor / 100)), [budget.limit_minor]);
+
+  const commit = () => {
+    const dollars = parseFloat(limit);
+    if (isNaN(dollars) || dollars < 0) {
+      setLimit(String(budget.limit_minor / 100)); // revert invalid input
+      return;
+    }
+    const minor = Math.round(dollars * 100);
+    if (minor !== budget.limit_minor) setBudget.mutate({ category: budget.category, limit_minor: minor });
+  };
+
+  const pct = budget.limit_minor > 0 ? (budget.spent_minor / budget.limit_minor) * 100 : 0;
+  const over = budget.spent_minor > budget.limit_minor;
+  const barColor = over ? "bg-red-500" : pct >= 80 ? "bg-amber-400" : "bg-accent";
+
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-medium text-slate-700">{titleCase(budget.category)}</span>
+        <div className="flex items-center gap-2">
+          <span className={`font-mono tnum ${over ? "text-red-500" : "text-slate-500"}`}>
+            {formatMoney(budget.spent_minor)}
+          </span>
+          <span className="text-slate-400">/</span>
+          <div className="relative">
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
+            <input
+              value={limit}
+              onChange={(e) => setLimit(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+              inputMode="decimal"
+              className="w-20 rounded border border-slate-200 py-1 pl-4 pr-1 text-right font-mono text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+          <button
+            onClick={() => delBudget.mutate(budget.category)}
+            className="text-slate-300 hover:text-red-500"
+            title="Remove budget"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+      </div>
+    </div>
+  );
+}
 
 const BUDGET_CATEGORIES = [
   "groceries", "dining", "transport", "travel", "shopping", "subscriptions",
@@ -33,7 +91,6 @@ function Budgets() {
   const { data: budgets } = useBudgets();
   const { data: profile } = useProfile();
   const setBudget = useSetBudget();
-  const delBudget = useDeleteBudget();
   const suggest = useSuggestBudgets();
   const [newCat, setNewCat] = useState("groceries");
   const [newAmt, setNewAmt] = useState("");
@@ -72,36 +129,9 @@ function Budgets() {
         </p>
       ) : (
         <div className="mb-4 space-y-3">
-          {rows.map((b) => {
-            const pct = b.limit_minor > 0 ? (b.spent_minor / b.limit_minor) * 100 : 0;
-            const over = b.spent_minor > b.limit_minor;
-            const barColor = over ? "bg-red-500" : pct >= 80 ? "bg-amber-400" : "bg-accent";
-            return (
-              <div key={b.category}>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-700">{titleCase(b.category)}</span>
-                  <div className="flex items-center gap-3">
-                    <span className={`font-mono tnum ${over ? "text-red-500" : "text-slate-500"}`}>
-                      {formatMoney(b.spent_minor)} / {formatMoney(b.limit_minor)}
-                    </span>
-                    <button
-                      onClick={() => delBudget.mutate(b.category)}
-                      className="text-slate-300 hover:text-red-500"
-                      title="Remove budget"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full ${barColor}`}
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+          {rows.map((b) => (
+            <BudgetRow key={b.category} budget={b} />
+          ))}
         </div>
       )}
 
