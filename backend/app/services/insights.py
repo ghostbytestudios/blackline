@@ -20,10 +20,15 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import Account, Transaction
+from ..models import Account, AccountSetting, Transaction
 from ..schemas import CategorySpend, InsightCard, InsightsSummary, MonthlyTrend
 
-ASSET_TYPES = {"depository", "investment"}
+# Only these are liabilities; everything else (depository, checking, savings, investment,
+# cash, other, unknown) is treated as an asset for cash-flow classification.
+LIABILITY_TYPES = {"credit", "loan"}
+# Cash-like accounts where idle balances could move to a higher yield (savings excluded —
+# it's presumably already chosen for yield).
+LIQUID_CHECKING_TYPES = {"depository", "checking", "cash"}
 # Internal money movement — neither income nor spending.
 EXCLUDED_CATEGORIES = {"transfer", "atm"}
 
@@ -48,18 +53,29 @@ def classify(amount_minor: int, account_type: str, category: str) -> tuple[int, 
     """Return (inflow_minor, outflow_minor) from the user's cash-flow perspective."""
     if category in EXCLUDED_CATEGORIES:
         return 0, 0
-    if account_type in ASSET_TYPES:
-        return (amount_minor, 0) if amount_minor > 0 else (0, -amount_minor)
-    # Liability account: non-transfer activity is money out of your pocket
-    # (interest, card purchases). Principal payments are "transfer" and excluded above.
-    return 0, abs(amount_minor)
+    if account_type in LIABILITY_TYPES:
+        # Non-transfer activity on a liability is money out of your pocket (interest, card
+        # purchases). Principal payments are "transfer" and excluded above.
+        return 0, abs(amount_minor)
+    # Asset account: positive is income, negative is spending.
+    return (amount_minor, 0) if amount_minor > 0 else (0, -amount_minor)
+
+
+def effective_account_types(db: Session) -> dict[int, str]:
+    """Map account id -> effective type, applying user role overrides over the auto type."""
+    overrides = {
+        s.account_id: s.type_override
+        for s in db.scalars(select(AccountSetting))
+        if s.type_override
+    }
+    return {a.id: overrides.get(a.id) or a.account_type for a in db.scalars(select(Account))}
 
 
 def current_month_category_spend(db: Session) -> dict[str, int]:
     """Outflow per category for the current calendar month (user cash-flow view)."""
     now = datetime.now(timezone.utc)
     start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
-    account_type = {a.id: a.account_type for a in db.scalars(select(Account))}
+    account_type = effective_account_types(db)
     out: dict[str, int] = defaultdict(int)
     for t in db.scalars(
         select(Transaction).where(Transaction.posted_at >= start, Transaction.pending.is_(False))
@@ -81,7 +97,7 @@ def build_summary(db: Session, days: int = 90) -> InsightsSummary:
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
 
-    account_type = {a.id: a.account_type for a in db.scalars(select(Account))}
+    account_type = effective_account_types(db)
     rows = list(
         db.scalars(
             select(Transaction).where(
@@ -156,7 +172,7 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
     """
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
-    account_type = {a.id: a.account_type for a in db.scalars(select(Account))}
+    account_type = effective_account_types(db)
     rows = list(
         db.scalars(
             select(Transaction).where(
@@ -277,12 +293,16 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
                 )
             )
 
-    # 3) Idle cash sitting in a low-yield account.
-    depository = [
-        a for a in db.scalars(select(Account)) if a.account_type == "depository" and a.balance_minor > 0
+    # 3) Idle cash sitting in a low-yield checking account (savings is excluded —
+    #    it's presumably already chosen for yield).
+    eff_types = effective_account_types(db)
+    liquid = [
+        a
+        for a in db.scalars(select(Account))
+        if eff_types.get(a.id) in LIQUID_CHECKING_TYPES and a.balance_minor > 0
     ]
-    if depository:
-        biggest = max(depository, key=lambda a: a.balance_minor)
+    if liquid:
+        biggest = max(liquid, key=lambda a: a.balance_minor)
         if biggest.balance_minor >= 500_000:  # >= $5,000
             potential = int(biggest.balance_minor * 0.04)
             cards.append(
@@ -290,8 +310,8 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
                     id="idle-cash",
                     title="High-Yield Savings Opportunity",
                     detail=(
-                        f"{biggest.name} holds {_usd(biggest.balance_minor)}. At ~4% APY that "
-                        f"balance could earn about {_usd(potential)} per year."
+                        f"{biggest.name} holds {_usd(biggest.balance_minor)} in checking. At ~4% "
+                        f"APY that balance could earn about {_usd(potential)} per year."
                     ),
                     severity="info",
                     icon="piggy",

@@ -31,16 +31,24 @@ class StatusResponse(BaseModel):
 
 # --- Domain read models ---
 class AccountOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
     org_name: str | None
-    account_type: str
+    account_type: str  # effective type (user override applied)
+    type_override: str | None = None
     currency: str
     balance_minor: int
     available_minor: int | None
     balance_date: datetime | None
     is_active: bool
+    goal_name: str | None = None
+    goal_target_minor: int | None = None
+
+
+class AccountSettingIn(BaseModel):
+    type_override: str | None = Field(default=None, max_length=32)
+    goal_name: str | None = Field(default=None, max_length=120)
+    goal_target_minor: int | None = Field(default=None, ge=0)
 
 
 class TransactionOut(BaseModel):

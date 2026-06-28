@@ -12,12 +12,15 @@ export interface Account {
   id: number;
   name: string;
   org_name: string | null;
-  account_type: "depository" | "credit" | "investment" | "loan" | string;
+  account_type: string; // effective (override applied)
+  type_override: string | null;
   currency: string;
   balance_minor: number;
   available_minor: number | null;
   balance_date: string | null;
   is_active: boolean;
+  goal_name: string | null;
+  goal_target_minor: number | null;
 }
 
 export interface Transaction {

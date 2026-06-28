@@ -135,6 +135,27 @@ class CategoryRule(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class AccountSetting(Base):
+    """User overrides for an account: role (type) and an optional savings goal.
+
+    Kept separate from `accounts` so sync never clobbers user choices and so we don't
+    need a schema migration on the existing table.
+    """
+
+    __tablename__ = "account_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    type_override: Mapped[str | None] = mapped_column(String(32))  # checking|savings|investment|...
+    goal_name: Mapped[str | None] = mapped_column(String(120))
+    goal_target_minor: Mapped[int | None] = mapped_column(BigInteger)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
 class Profile(Base):
     """Single-row user profile (income, etc.). Always id=1."""
 

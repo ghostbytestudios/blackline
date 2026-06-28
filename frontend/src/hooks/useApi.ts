@@ -68,6 +68,26 @@ export function useAccounts(enabled = true) {
   });
 }
 
+export function useUpdateAccountSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: number;
+      type_override?: string | null;
+      goal_name?: string | null;
+      goal_target_minor?: number | null;
+    }) => api.patch<Account>(`/accounts/${id}/settings`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      qc.invalidateQueries({ queryKey: ["insight-cards"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
 export function useTransactions(params: { accountId?: number; category?: string } = {}) {
   const search = new URLSearchParams();
   if (params.accountId) search.set("account_id", String(params.accountId));
