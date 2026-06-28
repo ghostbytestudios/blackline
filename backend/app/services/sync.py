@@ -67,7 +67,13 @@ def run_sync(db: Session, lookback_days: int = 90) -> SyncResult:
                 )
             )
             if existing is None:
-                category = categorize.categorize_text(t.payee, t.description, rules)
+                category = categorize.categorize_text(
+                    t.payee,
+                    t.description,
+                    rules,
+                    amount_minor=t.amount_minor,
+                    account_type=db_acct.account_type,
+                )
                 db.add(
                     Transaction(
                         account_id=db_acct.id,

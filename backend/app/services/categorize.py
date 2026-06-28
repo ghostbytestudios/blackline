@@ -22,24 +22,30 @@ from ..models import CategoryRule, Transaction
 # Order matters: first hit wins. These catch internal money movement so it is excluded
 # from spending analysis, plus recurring bill types the merchant map would miss.
 STRUCTURAL: list[tuple[str, str]] = [
-    ("mobile payment - thank you", "transfer"),
-    ("amex epayment", "transfer"),
+    # --- Card / loan payments & internal transfers: excluded from income AND spending.
+    # These move money between your own accounts (or pay down a card whose purchases were
+    # already counted), so categorizing them as anything else double-counts or inflates.
+    ("mobile payment", "transfer"),
+    ("thank you", "transfer"),  # "PAYMENT - THANK YOU" on card statements
+    ("epayment", "transfer"),
+    ("e-payment", "transfer"),
     ("crd epay", "transfer"),
     ("credit crd", "transfer"),
-    ("epayment", "transfer"),
-    ("online payment", "transfer"),
-    ("autopay", "transfer"),
-    ("ach pmt", "transfer"),
+    ("card payment", "transfer"),
+    ("cardmember serv", "transfer"),
     ("ach transfer", "transfer"),
-    ("principal", "transfer"),  # loan principal payment: cash down + debt down = net-worth neutral
-    ("interest", "interest"),  # loan interest: a real expense (direction handled by account type)
+    ("loan payment", "transfer"),
+    ("principal", "transfer"),  # loan principal: cash down + debt down = net-worth neutral
+    # --- Interest: what the bank pays YOU is income; what YOU pay on a loan is an expense.
+    ("interest paid", "income"),  # savings/checking interest credited to you
+    ("interest", "interest"),  # loan interest you pay (counts as spending via account type)
+    # --- Real expenses that must NOT be mistaken for transfers.
     ("p&c", "insurance"),
-    ("autopay insurance", "insurance"),
     ("overdraft", "fees"),
     ("service charge", "fees"),
     ("late fee", "fees"),
-    ("interest charged", "fees"),
     ("foreign transaction fee", "fees"),
+    # --- Cash.
     ("atm withdrawal", "atm"),
     ("withdrawal", "atm"),
 ]
@@ -117,8 +123,19 @@ def _load_rules(db: Session) -> list[CategoryRule]:
     return list(db.scalars(select(CategoryRule).order_by(CategoryRule.priority.asc())))
 
 
-def categorize_text(payee: str | None, description: str, rules: list[CategoryRule]) -> str:
-    """Return a category using user rules, then structural patterns, then the merchant map."""
+LIABILITY_TYPES = {"credit", "loan"}
+
+
+def categorize_text(
+    payee: str | None,
+    description: str,
+    rules: list[CategoryRule],
+    *,
+    amount_minor: int | None = None,
+    account_type: str | None = None,
+) -> str:
+    """Return a category using user rules, structural patterns, the merchant map, and
+    finally an account-aware safety net for liability-account payments."""
     payee_l = (payee or "").lower()
     desc_l = (description or "").lower()
     combined = f"{payee_l} {desc_l}"
@@ -132,6 +149,11 @@ def categorize_text(payee: str | None, description: str, rules: list[CategoryRul
     for needle, category in KEYWORDS.items():
         if needle in combined:
             return category
+
+    # Account-aware safety net: a positive amount on a liability account is money applied
+    # toward that debt (a payment) — a transfer, regardless of how the bank labels it.
+    if account_type in LIABILITY_TYPES and amount_minor is not None and amount_minor > 0:
+        return "transfer"
     return "uncategorized"
 
 
@@ -181,10 +203,19 @@ def learn_from_correction(db: Session, txn: Transaction, category: str) -> int:
 
 def recategorize_all(db: Session) -> int:
     """Re-run categorization on auto-categorized transactions. Returns count changed."""
+    from ..models import Account
+
     rules = _load_rules(db)
+    account_type = {a.id: a.account_type for a in db.scalars(select(Account))}
     changed = 0
     for txn in db.scalars(select(Transaction).where(Transaction.category_source == "auto")):
-        new_cat = categorize_text(txn.payee, txn.description, rules)
+        new_cat = categorize_text(
+            txn.payee,
+            txn.description,
+            rules,
+            amount_minor=txn.amount_minor,
+            account_type=account_type.get(txn.account_id),
+        )
         if new_cat != txn.category:
             txn.category = new_cat
             changed += 1
