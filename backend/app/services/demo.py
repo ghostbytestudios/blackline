@@ -21,8 +21,10 @@ from ..models import (
     Account,
     AccountSetting,
     Budget,
+    Goal,
     Holding,
     NetWorthSnapshot,
+    PortfolioSnapshot,
     Profile,
     Transaction,
 )
@@ -309,6 +311,30 @@ def seed(db: Session) -> dict:
             as_of=d, net_worth_minor=int(net), assets_minor=int(net) + liab,
             liabilities_minor=liab,
         ))
+    # --- Portfolio value history: same random-walk treatment as net worth ---
+    value_today, cost_today = 3_417_500, 3_027_500
+    value = float(value_today)
+    for days_ago in range(1, 181):
+        value -= s.rng.gauss(1_800, 11_000)
+        db.add(PortfolioSnapshot(
+            as_of=_today() - timedelta(days=days_ago),
+            total_value_minor=int(value),
+            total_cost_minor=cost_today - days_ago * 400,  # slow steady contributions
+        ))
+    db.add(PortfolioSnapshot(
+        as_of=_today(), total_value_minor=value_today, total_cost_minor=cost_today,
+    ))
+
+    # --- A goal in progress: created 90 days ago, savings has grown since ---
+    db.add(Goal(
+        name="Emergency Fund",
+        target_minor=1_500_000,
+        target_date=_today() + timedelta(days=270),
+        start_minor=1_100_000,  # savings balance ~90 days ago
+        account_ids=str(savings.id),
+        created_at=datetime.now(timezone.utc) - timedelta(days=90),
+    ))
+
     db.commit()
     record_snapshot(db)  # today's point from the seeded balances
 
@@ -329,6 +355,8 @@ def remove(db: Session) -> dict:
     for acct in demo_accounts:  # ORM delete cascades to transactions + holdings
         db.delete(acct)
     db.execute(NetWorthSnapshot.__table__.delete())
+    db.execute(PortfolioSnapshot.__table__.delete())
+    db.execute(Goal.__table__.delete())
     db.execute(Budget.__table__.delete())
     db.execute(AccountSetting.__table__.delete())
     profile = db.get(Profile, 1)

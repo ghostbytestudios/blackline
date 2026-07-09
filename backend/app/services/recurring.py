@@ -21,6 +21,7 @@ from __future__ import annotations
 import re
 import statistics
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -29,6 +30,15 @@ from sqlalchemy.orm import Session
 from ..models import Transaction
 from ..schemas import RecurringCharge
 from .insights import LIABILITY_TYPES, effective_account_types
+
+
+@dataclass
+class Stream:
+    """A detected recurring flow plus the internals the forecaster needs."""
+
+    charge: RecurringCharge
+    merchant_key: str
+    period_days: float
 
 # Categories that are never a recurring bill regardless of pattern.
 _NEVER_RECURRING = {"atm"}
@@ -78,23 +88,39 @@ def _recurring_outflow(amount_minor: int, account_type: str, category: str) -> i
     return -amount_minor if amount_minor < 0 else 0
 
 
-def detect_recurring(db: Session, days: int = 200) -> list[RecurringCharge]:
+def _recurring_inflow(amount_minor: int, account_type: str, category: str) -> int:
+    """Recurring money arriving (payroll, interest, inbound transfers). Raw ledger
+    credits on asset accounts only — liability credits are payments, not income."""
+    if account_type in LIABILITY_TYPES:
+        return 0
+    return amount_minor if amount_minor > 0 else 0
+
+
+def detect_streams(
+    db: Session,
+    days: int = 200,
+    direction: str = "out",
+    account_ids: set[int] | None = None,
+) -> list[Stream]:
     start = datetime.now(timezone.utc) - timedelta(days=days)
     account_type = effective_account_types(db)
+    flow = _recurring_outflow if direction == "out" else _recurring_inflow
 
     groups: dict[str, list[Transaction]] = defaultdict(list)
     for t in db.scalars(
         select(Transaction).where(Transaction.posted_at >= start, Transaction.pending.is_(False))
     ):
+        if account_ids is not None and t.account_id not in account_ids:
+            continue
         acct = account_type.get(t.account_id, "depository")
-        if _recurring_outflow(t.amount_minor, acct, t.category) <= 0:
+        if flow(t.amount_minor, acct, t.category) <= 0:
             continue
         key = _merchant_key(t)
         if key:
             groups[key].append(t)
 
-    results: list[RecurringCharge] = []
-    for txns in groups.values():
+    results: list[Stream] = []
+    for key, txns in groups.items():
         # Need at least two charges to establish a cadence. Two is enough to catch a
         # monthly bill that only appears 2-3x in SimpleFIN's ~90-day window.
         if len(txns) < 2:
@@ -136,19 +162,22 @@ def detect_recurring(db: Session, days: int = 200) -> list[RecurringCharge]:
         monthly_estimate = int(typical * (30.44 / period))
         last_date = txns[-1].posted_at.date()
         next_date = last_date + timedelta(days=round(period))
-        results.append(
-            RecurringCharge(
-                name=(txns[-1].payee or txns[-1].description or "")[:120],
-                category=txns[-1].category,
-                cadence=label,
-                typical_amount_minor=typical,
-                occurrences=len(txns),
-                last_date=last_date,
-                monthly_estimate_minor=monthly_estimate,
-                next_date=next_date,
-                days_until=(next_date - datetime.now(timezone.utc).date()).days,
-            )
+        charge = RecurringCharge(
+            name=(txns[-1].payee or txns[-1].description or "")[:120],
+            category=txns[-1].category,
+            cadence=label,
+            typical_amount_minor=typical,
+            occurrences=len(txns),
+            last_date=last_date,
+            monthly_estimate_minor=monthly_estimate,
+            next_date=next_date,
+            days_until=(next_date - datetime.now(timezone.utc).date()).days,
         )
+        results.append(Stream(charge=charge, merchant_key=key, period_days=period))
 
-    results.sort(key=lambda r: r.monthly_estimate_minor, reverse=True)
+    results.sort(key=lambda s: s.charge.monthly_estimate_minor, reverse=True)
     return results
+
+
+def detect_recurring(db: Session, days: int = 200) -> list[RecurringCharge]:
+    return [s.charge for s in detect_streams(db, days=days)]

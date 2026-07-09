@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import require_unlocked
-from ..models import Account, AccountSetting, Holding
-from ..schemas import AccountOut, AccountSettingIn, HoldingOut, PortfolioSummary
+from ..models import Account, AccountSetting, Holding, PortfolioSnapshot
+from ..schemas import AccountOut, AccountSettingIn, HoldingOut, PortfolioPoint, PortfolioSummary
 from ..services import portfolio as portfolio_service
 
 router = APIRouter(tags=["accounts"], dependencies=[Depends(require_unlocked)])
@@ -77,6 +77,13 @@ def update_settings(
 @router.get("/portfolio", response_model=PortfolioSummary)
 def portfolio(db: Session = Depends(get_db)) -> PortfolioSummary:
     return portfolio_service.build_portfolio(db)
+
+
+@router.get("/portfolio/history", response_model=list[PortfolioPoint])
+def portfolio_history(db: Session = Depends(get_db)) -> list[PortfolioSnapshot]:
+    # Ensure today's point exists so the chart always reflects current holdings.
+    portfolio_service.record_portfolio_snapshot(db)
+    return list(db.scalars(select(PortfolioSnapshot).order_by(PortfolioSnapshot.as_of)))
 
 
 @router.get("/accounts/{account_id}/holdings", response_model=list[HoldingOut])

@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import require_unlocked
 from ..models import Budget, Profile
-from ..schemas import BudgetIn, BudgetStatus
-from ..services import insights as insights_service
+from ..schemas import BudgetHistory, BudgetIn, BudgetStatus
+from ..services import budgets as budgets_service
 from ..services.insights import RECOMMENDED_ALLOCATION
 
 router = APIRouter(tags=["budgets"], dependencies=[Depends(require_unlocked)])
@@ -18,26 +18,25 @@ router = APIRouter(tags=["budgets"], dependencies=[Depends(require_unlocked)])
 
 @router.get("/budgets", response_model=list[BudgetStatus])
 def list_budgets(db: Session = Depends(get_db)) -> list[BudgetStatus]:
-    spend = insights_service.current_month_category_spend(db)
-    budgets = db.scalars(select(Budget).order_by(Budget.category)).all()
-    return [
-        BudgetStatus(category=b.category, limit_minor=b.limit_minor, spent_minor=spend.get(b.category, 0))
-        for b in budgets
-    ]
+    return budgets_service.budget_statuses(db)
+
+
+@router.get("/budgets/history", response_model=list[BudgetHistory])
+def history(db: Session = Depends(get_db), months: int = 6) -> list[BudgetHistory]:
+    return budgets_service.budget_history(db, months=max(2, min(months, 24)))
 
 
 @router.put("/budgets", response_model=BudgetStatus)
 def upsert_budget(body: BudgetIn, db: Session = Depends(get_db)) -> BudgetStatus:
     existing = db.scalar(select(Budget).where(Budget.category == body.category))
     if existing is None:
-        db.add(Budget(category=body.category, limit_minor=body.limit_minor))
+        db.add(Budget(category=body.category, limit_minor=body.limit_minor, rollover=body.rollover))
     else:
         existing.limit_minor = body.limit_minor
+        existing.rollover = body.rollover
     db.commit()
-    spend = insights_service.current_month_category_spend(db)
-    return BudgetStatus(
-        category=body.category, limit_minor=body.limit_minor, spent_minor=spend.get(body.category, 0)
-    )
+    status_by_cat = {s.category: s for s in budgets_service.budget_statuses(db)}
+    return status_by_cat[body.category]
 
 
 @router.post("/budgets/suggest", response_model=list[BudgetStatus])

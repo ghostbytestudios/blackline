@@ -2,11 +2,32 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Account, Holding
+from ..models import Account, Holding, PortfolioSnapshot
 from ..schemas import PortfolioHolding, PortfolioSummary
+
+
+def record_portfolio_snapshot(db: Session) -> None:
+    """Upsert today's portfolio value/cost snapshot. Idempotent; no-op if no holdings."""
+    totals = db.execute(
+        select(Holding.market_value_minor, Holding.cost_basis_minor)
+    ).all()
+    if not totals:
+        return
+    value = sum(mv or 0 for mv, _ in totals)
+    cost = sum(cb or 0 for _, cb in totals)
+    today = datetime.now(timezone.utc).date()
+    snap = db.scalar(select(PortfolioSnapshot).where(PortfolioSnapshot.as_of == today))
+    if snap is None:
+        snap = PortfolioSnapshot(as_of=today)
+        db.add(snap)
+    snap.total_value_minor = int(value)
+    snap.total_cost_minor = int(cost)
+    db.commit()
 
 
 def build_portfolio(db: Session) -> PortfolioSummary:

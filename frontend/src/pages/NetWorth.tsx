@@ -6,7 +6,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useInsights, useNetWorthHistory } from "../hooks/useApi";
+import { useForecast, useInsights, useNetWorthHistory } from "../hooks/useApi";
 import { Card, Loading, PageHeader } from "../components/ui";
 import { formatMoney, fromMinor, formatDate } from "../lib/format";
 import {
@@ -17,6 +17,69 @@ import {
   TOOLTIP_LABEL_STYLE,
   TOOLTIP_STYLE,
 } from "../lib/chartTheme";
+
+function ForecastCard() {
+  const { data: f } = useForecast(30);
+  if (!f || f.points.length === 0) return null;
+  const series = f.points.map((p) => ({
+    label: formatDate(p.date),
+    Projected: fromMinor(p.balance_minor),
+  }));
+  const falling = f.end_balance_minor < f.start_balance_minor;
+  const color = falling ? "#f59e0b" : "#10b981";
+
+  return (
+    <Card className="mt-5">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="font-semibold text-slate-100">Cash forecast — next 30 days</h2>
+        <span className="text-xs text-slate-500">liquid accounts only</span>
+      </div>
+      <div className="mb-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+        <span className="text-slate-400">
+          Today <span className="font-mono font-semibold tnum text-slate-100">{formatMoney(f.start_balance_minor)}</span>
+        </span>
+        <span className="text-slate-400">
+          Projected{" "}
+          <span className={`font-mono font-semibold tnum ${falling ? "text-amber-400" : "text-emerald-400"}`}>
+            {formatMoney(f.end_balance_minor)}
+          </span>
+        </span>
+        <span className="text-slate-400">
+          Bills due <span className="font-mono tnum text-slate-300">{formatMoney(f.expected_bills_minor)}</span>
+        </span>
+        <span className="text-slate-400">
+          Income expected <span className="font-mono tnum text-slate-300">{formatMoney(f.expected_income_minor)}</span>
+        </span>
+        <span className="text-slate-400">
+          Day-to-day <span className="font-mono tnum text-slate-300">~{formatMoney(f.discretionary_daily_minor)}/day</span>
+        </span>
+      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        <AreaChart data={series}>
+          <defs>
+            <linearGradient id="fc" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <XAxis dataKey="label" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} minTickGap={40} />
+          <YAxis tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} domain={["auto", "auto"]} />
+          <Tooltip
+            formatter={(v: number) => `$${v.toFixed(2)}`}
+            contentStyle={TOOLTIP_STYLE}
+            itemStyle={TOOLTIP_ITEM_STYLE}
+            labelStyle={TOOLTIP_LABEL_STYLE}
+          />
+          <Area type="monotone" dataKey="Projected" stroke={color} strokeWidth={2} fill="url(#fc)" />
+        </AreaChart>
+      </ResponsiveContainer>
+      <p className="mt-1 text-xs text-slate-500">
+        Projection = scheduled recurring bills and income on your cash accounts, plus your
+        average day-to-day spending. An estimate, not a promise.
+      </p>
+    </Card>
+  );
+}
 
 export default function NetWorth() {
   const history = useNetWorthHistory();
@@ -107,6 +170,8 @@ export default function NetWorth() {
           </AreaChart>
         </ResponsiveContainer>
       </Card>
+
+      <ForecastCard />
     </div>
   );
 }

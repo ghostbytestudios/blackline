@@ -69,6 +69,56 @@ export interface BudgetStatus {
   category: string;
   limit_minor: number;
   spent_minor: number;
+  rollover: boolean;
+  carryover_minor: number;
+  effective_limit_minor: number;
+}
+
+export interface BudgetMonth {
+  month: string;
+  spent_minor: number;
+  limit_minor: number;
+  over: boolean;
+}
+
+export interface BudgetHistory {
+  category: string;
+  months: BudgetMonth[];
+}
+
+export interface Goal {
+  id: number;
+  name: string;
+  target_minor: number;
+  target_date: string | null;
+  start_minor: number;
+  account_ids: number[];
+  created_at: string;
+  current_minor: number;
+  progress_pct: number;
+  required_monthly_minor: number | null;
+  on_track: boolean | null;
+}
+
+export interface PortfolioPoint {
+  as_of: string;
+  total_value_minor: number;
+  total_cost_minor: number;
+}
+
+export interface ForecastPoint {
+  date: string;
+  balance_minor: number;
+}
+
+export interface ForecastSummary {
+  start_balance_minor: number;
+  end_balance_minor: number;
+  expected_income_minor: number;
+  expected_bills_minor: number;
+  discretionary_daily_minor: number;
+  days: number;
+  points: ForecastPoint[];
 }
 
 export interface PortfolioHolding {

@@ -184,12 +184,72 @@ class ProfileOut(BaseModel):
 class BudgetIn(BaseModel):
     category: str = Field(min_length=1, max_length=64)
     limit_minor: int = Field(ge=0)
+    rollover: bool = False
 
 
 class BudgetStatus(BaseModel):
     category: str
     limit_minor: int
     spent_minor: int  # current calendar month
+    rollover: bool = False
+    carryover_minor: int = 0  # last month's unspent (+) / overspend (-), if rollover
+    effective_limit_minor: int = 0  # limit + carryover (floored at 0)
+
+
+class BudgetMonth(BaseModel):
+    month: str  # "YYYY-MM"
+    spent_minor: int
+    limit_minor: int  # the limit as it stands today (limits aren't versioned)
+    over: bool
+
+
+class BudgetHistory(BaseModel):
+    category: str
+    months: list[BudgetMonth]  # oldest first, includes current month
+
+
+class GoalIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    target_minor: int = Field(gt=0)
+    target_date: date | None = None
+    account_ids: list[int] = Field(min_length=1)
+
+
+class GoalOut(BaseModel):
+    id: int
+    name: str
+    target_minor: int
+    target_date: date | None
+    start_minor: int
+    account_ids: list[int]
+    created_at: datetime
+    # Computed:
+    current_minor: int  # combined balance of linked accounts today
+    progress_pct: float  # saved-since-start / (target - start)
+    required_monthly_minor: int | None  # to hit target_date from here
+    on_track: bool | None  # progress vs elapsed time (needs a target_date)
+
+
+class PortfolioPoint(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    as_of: date
+    total_value_minor: int
+    total_cost_minor: int
+
+
+class ForecastPoint(BaseModel):
+    date: date
+    balance_minor: int
+
+
+class ForecastSummary(BaseModel):
+    start_balance_minor: int  # liquid accounts today
+    end_balance_minor: int
+    expected_income_minor: int  # scheduled recurring inflows within the horizon
+    expected_bills_minor: int  # scheduled recurring outflows within the horizon
+    discretionary_daily_minor: int  # flat daily burn for the non-recurring rest
+    days: int
+    points: list[ForecastPoint]
 
 
 class SyncResult(BaseModel):

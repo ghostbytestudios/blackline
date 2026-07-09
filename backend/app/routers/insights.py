@@ -12,6 +12,7 @@ from sqlalchemy import select
 from ..models import NetWorthSnapshot
 from ..schemas import (
     DashboardSummary,
+    ForecastSummary,
     InsightCard,
     InsightsSummary,
     MerchantSummary,
@@ -19,6 +20,7 @@ from ..schemas import (
     RecurringCharge,
 )
 from ..services import dashboard as dashboard_service
+from ..services import forecast as forecast_service
 from ..services import insights as insights_service
 from ..services import merchants as merchants_service
 from ..services import recurring as recurring_service
@@ -50,6 +52,14 @@ def cards(
 @router.get("/recurring", response_model=list[RecurringCharge])
 def recurring(db: Session = Depends(get_db)) -> list[RecurringCharge]:
     return recurring_service.detect_recurring(db)
+
+
+@router.get("/forecast", response_model=ForecastSummary)
+def forecast(
+    db: Session = Depends(get_db),
+    days: int = Query(default=30, ge=7, le=90),
+) -> ForecastSummary:
+    return forecast_service.build_forecast(db, days=days)
 
 
 @router.get("/merchants", response_model=list[MerchantSummary])

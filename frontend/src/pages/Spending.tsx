@@ -11,8 +11,9 @@ import {
   YAxis,
 } from "recharts";
 import { useEffect, useState } from "react";
-import { Trash2, Sparkles } from "lucide-react";
+import { RefreshCcw, Trash2, Sparkles } from "lucide-react";
 import {
+  useBudgetHistory,
   useBudgets,
   useDeleteBudget,
   useInsights,
@@ -48,17 +49,30 @@ function BudgetRow({ budget }: { budget: BudgetStatus }) {
       return;
     }
     const minor = Math.round(dollars * 100);
-    if (minor !== budget.limit_minor) setBudget.mutate({ category: budget.category, limit_minor: minor });
+    if (minor !== budget.limit_minor)
+      setBudget.mutate({ category: budget.category, limit_minor: minor, rollover: budget.rollover });
   };
 
-  const pct = budget.limit_minor > 0 ? (budget.spent_minor / budget.limit_minor) * 100 : 0;
-  const over = budget.spent_minor > budget.limit_minor;
+  const effective = budget.effective_limit_minor || budget.limit_minor;
+  const pct = effective > 0 ? (budget.spent_minor / effective) * 100 : 0;
+  const over = budget.spent_minor > effective;
   const barColor = over ? "bg-red-500/100" : pct >= 80 ? "bg-amber-400" : "bg-accent";
 
   return (
     <div>
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-slate-300">{titleCase(budget.category)}</span>
+        <span className="flex items-center gap-2 font-medium text-slate-300">
+          {titleCase(budget.category)}
+          {budget.rollover && budget.carryover_minor !== 0 && (
+            <span
+              className={`text-xs ${budget.carryover_minor > 0 ? "text-emerald-400" : "text-red-400"}`}
+              title="Carried over from last month"
+            >
+              {budget.carryover_minor > 0 ? "+" : "−"}
+              {formatMoney(Math.abs(budget.carryover_minor))} carried
+            </span>
+          )}
+        </span>
         <div className="flex items-center gap-2">
           <span className={`font-mono tnum ${over ? "text-red-500" : "text-slate-400"}`}>
             {formatMoney(budget.spent_minor)}
@@ -76,6 +90,23 @@ function BudgetRow({ budget }: { budget: BudgetStatus }) {
             />
           </div>
           <button
+            onClick={() =>
+              setBudget.mutate({
+                category: budget.category,
+                limit_minor: budget.limit_minor,
+                rollover: !budget.rollover,
+              })
+            }
+            className={budget.rollover ? "text-accent-soft" : "text-slate-600 hover:text-slate-400"}
+            title={
+              budget.rollover
+                ? "Rollover on: last month's leftover adjusts this month's limit"
+                : "Rollover off — click to carry last month's leftover forward"
+            }
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => delBudget.mutate(budget.category)}
             className="text-slate-600 hover:text-red-500"
             title="Remove budget"
@@ -88,6 +119,60 @@ function BudgetRow({ budget }: { budget: BudgetStatus }) {
         <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
       </div>
     </div>
+  );
+}
+
+function BudgetHistoryCard() {
+  const { data } = useBudgetHistory(6);
+  const rows = (data ?? []).filter((h) => h.months.some((m) => m.spent_minor > 0));
+  if (rows.length === 0) return null;
+
+  return (
+    <Card className="mt-5">
+      <h2 className="mb-1 font-semibold text-slate-100">Budget History</h2>
+      <p className="mb-3 text-xs text-slate-500">
+        Spend vs. today&apos;s limit, last 6 months. Green = under, red = over.
+      </p>
+      <div className="space-y-2.5">
+        {rows.map((h) => (
+          <div key={h.category} className="flex items-center gap-3 text-sm">
+            <span className="w-28 shrink-0 font-medium text-slate-300">
+              {titleCase(h.category)}
+            </span>
+            <div className="flex flex-1 gap-1.5">
+              {h.months.map((m) => {
+                const pct = m.limit_minor > 0 ? Math.round((m.spent_minor / m.limit_minor) * 100) : 0;
+                return (
+                  <div
+                    key={m.month}
+                    title={`${m.month}: ${formatMoney(m.spent_minor)} of ${formatMoney(m.limit_minor)} (${pct}%)`}
+                    className={`h-6 flex-1 rounded flex items-center justify-center text-[10px] font-mono font-semibold ${
+                      m.spent_minor === 0
+                        ? "bg-ink-700/50 text-slate-600"
+                        : m.over
+                          ? "bg-red-500/25 text-red-300"
+                          : "bg-emerald-500/20 text-emerald-300"
+                    }`}
+                  >
+                    {m.spent_minor > 0 ? `${pct}%` : "–"}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div className="flex items-center gap-3 pt-1 text-[10px] uppercase tracking-wider text-slate-500">
+          <span className="w-28 shrink-0" />
+          <div className="flex flex-1 gap-1.5">
+            {(rows[0]?.months ?? []).map((m) => (
+              <span key={m.month} className="flex-1 text-center">
+                {m.month.slice(5)}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -202,6 +287,7 @@ export default function Spending() {
       <PageHeader title="Spending Analysis" />
       <div className="mb-5">
         <Budgets />
+        <BudgetHistoryCard />
       </div>
       {isLoading ? (
         <Loading />

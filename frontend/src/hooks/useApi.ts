@@ -2,12 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import type {
   Account,
+  BudgetHistory,
   BudgetStatus,
   DashboardSummary,
+  ForecastSummary,
+  Goal,
   InsightCard,
   InsightsSummary,
   MerchantSummary,
   NetWorthPoint,
+  PortfolioPoint,
   PortfolioSummary,
   Profile,
   RecurringCharge,
@@ -199,12 +203,59 @@ export function useBudgets() {
 export function useSetBudget() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (b: { category: string; limit_minor: number }) =>
+    mutationFn: (b: { category: string; limit_minor: number; rollover?: boolean }) =>
       api.put<BudgetStatus>("/budgets", b),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["budgets"] });
+      qc.invalidateQueries({ queryKey: ["budget-history"] });
       qc.invalidateQueries({ queryKey: ["insight-cards"] });
     },
+  });
+}
+
+export function useBudgetHistory(months = 6) {
+  return useQuery({
+    queryKey: ["budget-history", months],
+    queryFn: () => api.get<BudgetHistory[]>(`/budgets/history?months=${months}`),
+  });
+}
+
+export function useGoals() {
+  return useQuery({ queryKey: ["goals"], queryFn: () => api.get<Goal[]>("/goals") });
+}
+
+export function useCreateGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (g: {
+      name: string;
+      target_minor: number;
+      target_date?: string | null;
+      account_ids: number[];
+    }) => api.post<Goal>("/goals", g),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
+  });
+}
+
+export function useDeleteGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del<void>(`/goals/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["goals"] }),
+  });
+}
+
+export function usePortfolioHistory() {
+  return useQuery({
+    queryKey: ["portfolio-history"],
+    queryFn: () => api.get<PortfolioPoint[]>("/portfolio/history"),
+  });
+}
+
+export function useForecast(days = 30) {
+  return useQuery({
+    queryKey: ["forecast", days],
+    queryFn: () => api.get<ForecastSummary>(`/forecast?days=${days}`),
   });
 }
 
