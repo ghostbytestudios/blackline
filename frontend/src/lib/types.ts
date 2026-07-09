@@ -207,3 +207,35 @@ export interface SyncResult {
   holdings_upserted: number;
   errors: string[];
 }
+
+// --- Statement import (CSV/OFX) ---
+
+export interface ColumnMapping {
+  date: number;
+  amount?: number | null;
+  debit?: number | null;
+  credit?: number | null;
+  payee?: number | null;
+  description?: number | null;
+  memo?: number | null;
+  date_format?: string | null;
+  flip_amounts?: boolean;
+}
+
+export interface ImportPreview {
+  kind: "csv" | "ofx";
+  headers: string[];
+  sample_rows: string[][];
+  row_count: number;
+  suggested_mapping?: ColumnMapping | null;
+  currency?: string | null;
+  warnings: string[];
+}
+
+export interface ImportResult {
+  total_rows: number;
+  inserted: number;
+  duplicates_skipped: number;
+  unparsed_skipped: number;
+  warnings: string[];
+}

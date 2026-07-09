@@ -16,7 +16,18 @@ from starlette.responses import Response
 from . import audit
 from .config import get_settings
 from .db import DatabaseLocked, read_scope
-from .routers import accounts, auth, budgets, connect, demo, goals, insights, profile, transactions
+from .routers import (
+    accounts,
+    auth,
+    budgets,
+    connect,
+    demo,
+    goals,
+    imports,
+    insights,
+    profile,
+    transactions,
+)
 from .security.lock import app_lock
 
 settings = get_settings()
@@ -98,6 +109,7 @@ for r in (
     profile.router,
     demo.router,
     goals.router,
+    imports.router,
 ):
     app.include_router(r, prefix="/api")
 

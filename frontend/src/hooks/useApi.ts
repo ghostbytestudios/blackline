@@ -9,6 +9,9 @@ import type {
   Goal,
   InsightCard,
   InsightsSummary,
+  ColumnMapping,
+  ImportPreview,
+  ImportResult,
   MerchantSummary,
   NetWorthPoint,
   PortfolioPoint,
@@ -294,6 +297,36 @@ export function useSetProfile() {
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["insight-cards"] });
     },
+  });
+}
+
+export function useImportPreview() {
+  return useMutation({
+    mutationFn: (b: { filename: string; content: string }) =>
+      api.post<ImportPreview>("/import/preview", b),
+  });
+}
+
+export function useImportCommit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: {
+      filename: string;
+      content: string;
+      account_id: number;
+      mapping?: ColumnMapping | null;
+      skip_duplicates?: boolean;
+    }) => api.post<ImportResult>("/import/commit", b),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useCreateManualAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: { name: string; account_type?: string; balance_minor?: number }) =>
+      api.post<Account>("/accounts/manual", b),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
   });
 }
 

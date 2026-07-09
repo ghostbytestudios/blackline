@@ -6,10 +6,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from uuid import uuid4
+
 from ..db import get_db
 from ..deps import require_unlocked
 from ..models import Account, AccountSetting, Holding, PortfolioSnapshot
-from ..schemas import AccountOut, AccountSettingIn, HoldingOut, PortfolioPoint, PortfolioSummary
+from ..schemas import (
+    AccountOut,
+    AccountSettingIn,
+    HoldingOut,
+    ManualAccountIn,
+    PortfolioPoint,
+    PortfolioSummary,
+)
 from ..services import portfolio as portfolio_service
 
 router = APIRouter(tags=["accounts"], dependencies=[Depends(require_unlocked)])
@@ -46,6 +55,29 @@ def list_accounts(db: Session = Depends(get_db)) -> list[AccountOut]:
     settings = _settings_map(db)
     accounts = db.scalars(select(Account).order_by(Account.name))
     return [_to_out(a, settings.get(a.id)) for a in accounts]
+
+
+@router.post("/accounts/manual", response_model=AccountOut, status_code=status.HTTP_201_CREATED)
+def create_manual_account(body: ManualAccountIn, db: Session = Depends(get_db)) -> AccountOut:
+    """A provider-less account to hold imported statements. Sync never touches it
+    (sync upserts by SimpleFIN external_id; this one is `manual-…`)."""
+    if body.account_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid account type. Allowed: {sorted(ALLOWED_TYPES)}",
+        )
+    account = Account(
+        external_id=f"manual-{uuid4().hex}",
+        name=body.name,
+        org_name="Manual",
+        account_type=body.account_type,
+        currency=body.currency.upper(),
+        balance_minor=body.balance_minor,
+    )
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return _to_out(account, None)
 
 
 @router.patch("/accounts/{account_id}/settings", response_model=AccountOut)

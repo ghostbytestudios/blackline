@@ -63,10 +63,14 @@ login — to a company's cloud. Blackline takes the opposite approach:
 - **Demo mode** — one click loads a realistic six-month fictional household so you can
   try everything before connecting a bank (and one click removes it).
 - **Accounts** — label each account (checking, savings, investment, credit, loan…) and set savings goals with progress bars.
-- **Transactions** — automatically categorized; correct one and Blackline *learns a rule* and applies it to every similar charge.
-- **Spending & budgets** — category breakdowns, income-vs-spending trends, and inline-editable monthly budgets (with a one-click "suggest from income" using 50/30/20).
-- **Investments** — holdings, allocation, and portfolio value.
-- **Recurring** — auto-detects fixed-price subscriptions, bills, and loan payments while ignoring variable retail spending.
+- **Transactions** — automatically categorized (correct one and Blackline *learns a rule*), full-text search, and personal notes + tags on any charge.
+- **Statement import** — bring in CSV/OFX/QFX exports from any bank: auto-detected column mapping, duplicate detection against synced data, and manual accounts for banks you don't link.
+- **Spending & budgets** — category breakdowns, income-vs-spending trends, inline-editable monthly budgets with optional month-to-month rollover, and a six-month budget history grid (plus one-click "suggest from income" using 50/30/20).
+- **Merchants** — where the money actually goes: per-merchant totals and monthly averages over 90 days to a year.
+- **Goals** — multi-account savings goals with deadlines, required-per-month math, and on-track/behind status.
+- **Investments** — holdings, allocation, per-holding gain/loss, and portfolio value history vs. cost basis.
+- **Recurring & upcoming bills** — auto-detects fixed-price subscriptions, bills, and loan payments (ignoring variable retail spending) and projects what's due in the next two weeks.
+- **Cash-flow forecast** — a 30-day projection of your liquid balance from detected bills, income, and average day-to-day spending.
 - **Net worth** — historical net-worth tracking that accumulates with each sync.
 - **Insights** — flags spending spikes, budget overruns, idle high-yield-eligible cash, and budgeting-ratio guidance (housing, transport, debt-to-income, 50/30/20).
 - **CSV export** — download your transactions (optionally date-filtered) for spreadsheets or taxes.
@@ -222,11 +226,13 @@ token needed.
 |---|---|
 | **Dashboard** | Spending pace vs. last month, spent today/yesterday/MTD, net worth, income, recurring total, budget status, savings-rate health, recent activity. |
 | **Accounts** | Set each account's role (checking/savings/investment/credit/loan) and savings goals. Roles drive correct cash-flow and insight calculations. |
-| **Transactions** | Review and re-categorize. Editing a category creates a learned rule applied to all similar charges. |
-| **Spending** | Category pie, income-vs-spending bars, and inline-editable **Monthly Budgets**. Add your income in Settings to unlock "Suggest from income". |
-| **Investments** | Holdings table and allocation. (Cost basis/gains appear only if your provider supplies them.) |
-| **Recurring** | Detected subscriptions and recurring charges. |
-| **Net Worth** | Historical net worth once a few snapshots exist, otherwise a labeled estimate. |
+| **Transactions** | Search, review, re-categorize, and annotate with notes/tags. Editing a category creates a learned rule applied to all similar charges. The **Import** button takes CSV/OFX/QFX statement files. |
+| **Spending** | Category pie, income-vs-spending bars, inline-editable **Monthly Budgets** (with optional rollover), and a six-month budget history grid. Add your income in Settings to unlock "Suggest from income". |
+| **Merchants** | Per-merchant spending totals and monthly averages; click through to that merchant's transactions. |
+| **Goals** | Savings goals funded by one or more accounts, with deadlines and on-track status. |
+| **Investments** | Holdings table, allocation, gain/loss, and value history. (Cost basis/gains appear only if your provider supplies them.) |
+| **Recurring** | Detected subscriptions and recurring charges, plus bills due in the next 14 days. |
+| **Net Worth** | Historical net worth once a few snapshots exist (otherwise a labeled estimate), plus a 30-day cash forecast. |
 | **Insights** | Severity-grouped cards: spikes, budget overruns, idle cash, and budgeting-ratio guidance. |
 | **Settings** | Connect/disconnect SimpleFIN, demo mode, CSV export, set income, change passphrase. |
 

@@ -6,6 +6,7 @@ import Tutorial from "./components/Tutorial";
 import Dashboard from "./pages/Dashboard";
 import Accounts from "./pages/Accounts";
 import Transactions from "./pages/Transactions";
+import Import from "./pages/Import";
 import Spending from "./pages/Spending";
 import Merchants from "./pages/Merchants";
 import Goals from "./pages/Goals";
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/transactions" element={<Transactions />} />
+          <Route path="/import" element={<Import />} />
           <Route path="/spending" element={<Spending />} />
           <Route path="/merchants" element={<Merchants />} />
           <Route path="/goals" element={<Goals />} />

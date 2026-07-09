@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, NotebookPen, Search, Tag } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ChevronLeft, ChevronRight, FileUp, NotebookPen, Search, Tag } from "lucide-react";
 import {
   useAccounts,
   useAnnotateTransaction,
@@ -153,6 +153,12 @@ export default function Transactions() {
                 </option>
               ))}
             </select>
+            <Link
+              to="/import"
+              className="flex items-center gap-1.5 rounded-lg border border-ink-700 px-3 py-2 text-sm text-slate-400 hover:bg-ink-700/60 hover:text-slate-200"
+            >
+              <FileUp className="h-4 w-4" /> Import
+            </Link>
           </div>
         }
       />

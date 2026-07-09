@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # --- Lock / session ---
@@ -300,3 +300,70 @@ class InsightsSummary(BaseModel):
     top_categories: list[CategorySpend]
     monthly_trends: list[MonthlyTrend]
     observations: list[str]
+
+
+# --- Statement import (CSV/OFX) ---
+
+# Bank exports are small; this cap (~8 MB of text) only guards against abuse.
+_MAX_IMPORT_CHARS = 8_000_000
+
+
+class ColumnMapping(BaseModel):
+    """CSV column assignments (0-based indexes). `amount` is a single signed
+    column; alternatively `debit`/`credit` are separate unsigned columns."""
+
+    date: int = Field(ge=0)
+    amount: int | None = Field(default=None, ge=0)
+    debit: int | None = Field(default=None, ge=0)
+    credit: int | None = Field(default=None, ge=0)
+    payee: int | None = Field(default=None, ge=0)
+    description: int | None = Field(default=None, ge=0)
+    memo: int | None = Field(default=None, ge=0)
+    date_format: str | None = Field(default=None, max_length=32)  # strptime; None = auto
+    flip_amounts: bool = False  # file records spending as positive
+
+    @model_validator(mode="after")
+    def _needs_an_amount(self) -> "ColumnMapping":
+        if self.amount is None and self.debit is None and self.credit is None:
+            raise ValueError("Map either an amount column or debit/credit columns.")
+        return self
+
+
+class ImportPreviewRequest(BaseModel):
+    filename: str = Field(min_length=1, max_length=255)
+    content: str = Field(min_length=1, max_length=_MAX_IMPORT_CHARS)
+
+
+class ImportPreview(BaseModel):
+    kind: str  # "csv" | "ofx"
+    headers: list[str]
+    sample_rows: list[list[str]]
+    row_count: int
+    suggested_mapping: ColumnMapping | None = None  # CSV only
+    currency: str | None = None  # OFX CURDEF, if present
+    warnings: list[str] = []
+
+
+class ImportCommitRequest(BaseModel):
+    filename: str = Field(min_length=1, max_length=255)
+    content: str = Field(min_length=1, max_length=_MAX_IMPORT_CHARS)
+    account_id: int
+    mapping: ColumnMapping | None = None  # required for CSV, ignored for OFX
+    skip_duplicates: bool = True
+
+
+class ImportResult(BaseModel):
+    total_rows: int
+    inserted: int
+    duplicates_skipped: int
+    unparsed_skipped: int
+    warnings: list[str] = []
+
+
+class ManualAccountIn(BaseModel):
+    """A hand-created account to hold imported statements (no provider link)."""
+
+    name: str = Field(min_length=1, max_length=255)
+    account_type: str = "checking"
+    currency: str = Field(default="USD", min_length=3, max_length=8)
+    balance_minor: int = 0
