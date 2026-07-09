@@ -55,7 +55,11 @@ defend against, what we explicitly do *not*, and the controls in place.
 - **Memory exposure.** While unlocked, the derived key and decrypted access URL live in
   process memory. A local attacker with admin/debugger access could read them. This is
   inherent to any local app; full-disk encryption + OS account security are the defense.
-- **No app-level rate limiting / brute force lockout on the passphrase yet.** Planned.
+- **Memory-only throttle state.** Unlock attempts are rate-limited (3 free tries, then
+  exponential backoff capped at 60s) and the vault auto-locks after idle minutes, but the
+  throttle counter lives in process memory — restarting the backend resets it. Acceptable
+  because an attacker who can restart your local process can also just read the blob and
+  brute-force offline, where Argon2id is the real defense.
 
 ## What this app deliberately does NOT do
 
@@ -65,7 +69,16 @@ defend against, what we explicitly do *not*, and the controls in place.
   *you* explicitly connected (and even then, only pulls — never pushes).
 - Never opens a port beyond localhost.
 
-## Reporting
+## Reporting a vulnerability
 
-This is a personal, self-hosted app. If you fork/extend it, keep the localhost binding
-and the read-only integration posture intact.
+**Please do not open a public issue for security problems.** Report privately instead:
+
+- GitHub: [private vulnerability reporting](https://github.com/ghostbytestudios/blackline/security/advisories/new)
+- Email: ghxstbytestudios@gmail.com
+
+Include what you found, how to reproduce it, and what an attacker could do with it.
+Reports against the threat model above get priority over everything else; attacks that
+require an already-compromised machine are out of scope (see "Memory exposure").
+
+If you fork/extend the app, keep the localhost binding and the read-only integration
+posture intact.

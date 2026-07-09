@@ -1,5 +1,8 @@
 # Blackline
 
+[![CI](https://github.com/ghostbytestudios/blackline/actions/workflows/ci.yml/badge.svg)](https://github.com/ghostbytestudios/blackline/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 **Your private, local-first personal finance dashboard.**
 
 Blackline aggregates your bank and investment accounts, then shows you spending
@@ -131,12 +134,26 @@ with one click before connecting your real bank (demo data never mixes with real
 
 ## Setup
 
-Clone the repo, then start the backend and frontend in two terminals.
+Clone the repo:
 
 ```bash
 git clone https://github.com/ghostbytestudios/blackline.git
 cd blackline
 ```
+
+**Quick start** — one script bootstraps everything (venv, dependencies) and launches
+both servers:
+
+```powershell
+.\start.ps1        # Windows
+```
+
+```bash
+./start.sh         # macOS / Linux
+```
+
+Then open http://127.0.0.1:5173. Prefer to run the pieces yourself? The manual steps
+follow.
 
 ### 1. Backend (FastAPI)
 
@@ -343,9 +360,12 @@ blackline/
 
 ## Contributing
 
-Contributions are welcome. If you fork or extend Blackline, please **keep the security
-posture intact**: localhost-only binding, read-only aggregation, no credential storage,
-and encryption at rest. Open an issue or PR with a clear description of the change.
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks,
+and the design principles every change must keep (localhost-only binding, read-only
+aggregation, no credential storage, encryption at rest). CI runs the backend test
+suite and the frontend build on every push and pull request.
+
+Found a security problem? Please report it privately — see [SECURITY.md](SECURITY.md).
 
 ---
 
