@@ -34,6 +34,18 @@ export interface Transaction {
   pending: boolean;
   category: string;
   category_source: "auto" | "user";
+  note: string | null;
+  tags: string[];
+}
+
+export interface MerchantSummary {
+  name: string;
+  category: string;
+  txn_count: number;
+  total_minor: number;
+  avg_txn_minor: number;
+  monthly_avg_minor: number;
+  last_date: string;
 }
 
 export interface CategorySpend {
@@ -90,6 +102,8 @@ export interface RecurringCharge {
   occurrences: number;
   last_date: string;
   monthly_estimate_minor: number;
+  next_date: string;
+  days_until: number;
 }
 
 export interface NetWorthPoint {

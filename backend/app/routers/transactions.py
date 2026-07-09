@@ -5,18 +5,31 @@ from __future__ import annotations
 import csv
 import io
 from datetime import date, datetime, time, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sqlalchemy import func, or_
+
 from ..db import get_db
 from ..deps import require_unlocked
 from ..models import Account, CategoryRule, Transaction
-from ..schemas import CategoryRuleIn, CategoryUpdate, TransactionOut
+from ..schemas import CategoryRuleIn, CategoryUpdate, TransactionAnnotate, TransactionOut
 from ..services import categorize
 
 router = APIRouter(tags=["transactions"], dependencies=[Depends(require_unlocked)])
+
+
+def normalize_tags(tags: list[str]) -> str:
+    """Lowercase, trim, collapse whitespace, dedupe (order-preserving) -> stored CSV."""
+    seen: list[str] = []
+    for raw in tags:
+        t = " ".join(raw.lower().replace(",", " ").split())
+        if t and t not in seen:
+            seen.append(t)
+    return ",".join(seen)
 
 
 @router.get("/transactions", response_model=list[TransactionOut])
@@ -24,16 +37,49 @@ def list_transactions(
     db: Session = Depends(get_db),
     account_id: int | None = None,
     category: str | None = None,
-    limit: int = Query(default=100, ge=1, le=1000),
-    offset: int = Query(default=0, ge=0),
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    tag: Annotated[str | None, Query(max_length=64)] = None,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[Transaction]:
     stmt = select(Transaction).order_by(Transaction.posted_at.desc())
     if account_id is not None:
         stmt = stmt.where(Transaction.account_id == account_id)
     if category is not None:
         stmt = stmt.where(Transaction.category == category)
+    if q:
+        needle = f"%{q.strip().lower()}%"
+        stmt = stmt.where(
+            or_(
+                func.lower(Transaction.payee).like(needle),
+                func.lower(Transaction.description).like(needle),
+                func.lower(Transaction.memo).like(needle),
+                func.lower(Transaction.note).like(needle),
+            )
+        )
+    if tag:
+        # Tags are stored as "a,b,c"; match a whole tag, not a substring of one.
+        stmt = stmt.where(
+            ("," + Transaction.tags + ",").like(f"%,{tag.strip().lower()},%")
+        )
     stmt = stmt.limit(limit).offset(offset)
     return list(db.scalars(stmt))
+
+
+@router.patch("/transactions/{txn_id}", response_model=TransactionOut)
+def annotate_transaction(
+    txn_id: int, body: TransactionAnnotate, db: Session = Depends(get_db)
+) -> Transaction:
+    txn = db.get(Transaction, txn_id)
+    if txn is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+    if body.note is not None:
+        txn.note = body.note.strip() or None
+    if body.tags is not None:
+        txn.tags = normalize_tags(body.tags)
+    db.commit()
+    db.refresh(txn)
+    return txn
 
 
 def _csv_amount(minor: int) -> str:
@@ -73,7 +119,8 @@ def export_csv(
     buf = io.StringIO()
     writer = csv.writer(buf, lineterminator="\n")
     writer.writerow(
-        ["date", "account", "payee", "description", "amount", "currency", "category", "pending", "memo"]
+        ["date", "account", "payee", "description", "amount", "currency", "category",
+         "pending", "memo", "note", "tags"]
     )
     for t in db.scalars(stmt):
         acct = accounts.get(t.account_id)
@@ -88,6 +135,8 @@ def export_csv(
                 t.category,
                 "yes" if t.pending else "no",
                 _csv_text(t.memo),
+                _csv_text(t.note),
+                t.tags,
             ]
         )
 

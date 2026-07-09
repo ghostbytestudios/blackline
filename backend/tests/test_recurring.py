@@ -91,6 +91,16 @@ def test_two_occurrences_enough_for_monthly(db):
     assert len(results) == 1
 
 
+def test_next_due_projection(db):
+    """next_date = last charge + cadence period; days_until counts from today."""
+    acct = make_account(db)
+    add_series(db, acct, amount=-1549, interval_days=30, count=3, payee="Netflix", category="subscriptions")
+    r = detect_recurring(db)[0]
+    assert (r.next_date - r.last_date).days == 30
+    # Last charge was 2 days ago (add_series newest offset), so ~28 days out.
+    assert 26 <= r.days_until <= 30
+
+
 def test_two_differing_amounts_not_a_bill(db):
     """Two purchases at the same store a month apart, ~12% apart in price, are just
     shopping — '1 of 2 amounts' must not count as a mode."""

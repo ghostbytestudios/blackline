@@ -14,11 +14,13 @@ from ..schemas import (
     DashboardSummary,
     InsightCard,
     InsightsSummary,
+    MerchantSummary,
     NetWorthPoint,
     RecurringCharge,
 )
 from ..services import dashboard as dashboard_service
 from ..services import insights as insights_service
+from ..services import merchants as merchants_service
 from ..services import recurring as recurring_service
 
 router = APIRouter(tags=["insights"], dependencies=[Depends(require_unlocked)])
@@ -48,6 +50,14 @@ def cards(
 @router.get("/recurring", response_model=list[RecurringCharge])
 def recurring(db: Session = Depends(get_db)) -> list[RecurringCharge]:
     return recurring_service.detect_recurring(db)
+
+
+@router.get("/merchants", response_model=list[MerchantSummary])
+def merchants(
+    db: Session = Depends(get_db),
+    days: int = Query(default=365, ge=30, le=730),
+) -> list[MerchantSummary]:
+    return merchants_service.merchant_summaries(db, days=days)
 
 
 @router.get("/networth/history", response_model=list[NetWorthPoint])

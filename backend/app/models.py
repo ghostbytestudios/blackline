@@ -95,6 +95,8 @@ class Transaction(Base):
     pending: Mapped[bool] = mapped_column(Boolean, default=False)
     category: Mapped[str] = mapped_column(String(64), default="uncategorized")
     category_source: Mapped[str] = mapped_column(String(16), default="auto")  # auto|user
+    note: Mapped[str | None] = mapped_column(Text)  # user-written annotation
+    tags: Mapped[str] = mapped_column(Text, default="")  # comma-separated lowercase tags
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     account: Mapped["Account"] = relationship(back_populates="transactions")

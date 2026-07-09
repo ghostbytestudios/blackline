@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # --- Lock / session ---
@@ -25,6 +25,16 @@ class ResetVaultRequest(BaseModel):
     """Destroys the vault. `confirm` must be the exact phrase, typed by the user."""
 
     confirm: str
+
+
+class MerchantSummary(BaseModel):
+    name: str
+    category: str
+    txn_count: int
+    total_minor: int
+    avg_txn_minor: int
+    monthly_avg_minor: int
+    last_date: date
 
 
 # --- Dashboard ---
@@ -86,6 +96,23 @@ class TransactionOut(BaseModel):
     pending: bool
     category: str
     category_source: str
+    note: str | None = None
+    tags: list[str] = []
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _tags_from_csv(cls, v: object) -> object:
+        # Stored as a comma-separated string; exposed as a list.
+        if isinstance(v, str):
+            return [t for t in v.split(",") if t]
+        return v
+
+
+class TransactionAnnotate(BaseModel):
+    """Note/tags update. Omitted fields are left unchanged."""
+
+    note: str | None = Field(default=None, max_length=2000)
+    tags: list[str] | None = Field(default=None, max_length=20)
 
 
 class HoldingOut(BaseModel):
@@ -132,6 +159,8 @@ class RecurringCharge(BaseModel):
     occurrences: int
     last_date: date
     monthly_estimate_minor: int
+    next_date: date  # projected next charge (last_date + cadence period)
+    days_until: int  # negative = past due / possibly lapsed
 
 
 class CategoryUpdate(BaseModel):

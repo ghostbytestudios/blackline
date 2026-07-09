@@ -6,6 +6,7 @@ import type {
   DashboardSummary,
   InsightCard,
   InsightsSummary,
+  MerchantSummary,
   NetWorthPoint,
   PortfolioSummary,
   Profile,
@@ -118,16 +119,34 @@ export function useUpdateAccountSettings() {
 }
 
 export function useTransactions(
-  params: { accountId?: number; category?: string; limit?: number } = {},
+  params: { accountId?: number; category?: string; q?: string; tag?: string; limit?: number } = {},
 ) {
   const search = new URLSearchParams();
   if (params.accountId) search.set("account_id", String(params.accountId));
   if (params.category) search.set("category", params.category);
+  if (params.q) search.set("q", params.q);
+  if (params.tag) search.set("tag", params.tag);
   if (params.limit) search.set("limit", String(params.limit));
   const qs = search.toString();
   return useQuery({
     queryKey: ["transactions", params],
     queryFn: () => api.get<Transaction[]>(`/transactions${qs ? `?${qs}` : ""}`),
+  });
+}
+
+export function useAnnotateTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number; note?: string | null; tags?: string[] }) =>
+      api.patch<Transaction>(`/transactions/${id}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["transactions"] }),
+  });
+}
+
+export function useMerchants(days = 365) {
+  return useQuery({
+    queryKey: ["merchants", days],
+    queryFn: () => api.get<MerchantSummary[]>(`/merchants?days=${days}`),
   });
 }
 

@@ -134,6 +134,8 @@ def detect_recurring(db: Session, days: int = 200) -> list[RecurringCharge]:
         # The subscription price is the modal amount (falls back to median if no mode).
         typical = int(modal_amount if modal_count > 1 else statistics.median(amounts))
         monthly_estimate = int(typical * (30.44 / period))
+        last_date = txns[-1].posted_at.date()
+        next_date = last_date + timedelta(days=round(period))
         results.append(
             RecurringCharge(
                 name=(txns[-1].payee or txns[-1].description or "")[:120],
@@ -141,8 +143,10 @@ def detect_recurring(db: Session, days: int = 200) -> list[RecurringCharge]:
                 cadence=label,
                 typical_amount_minor=typical,
                 occurrences=len(txns),
-                last_date=txns[-1].posted_at.date(),
+                last_date=last_date,
                 monthly_estimate_minor=monthly_estimate,
+                next_date=next_date,
+                days_until=(next_date - datetime.now(timezone.utc).date()).days,
             )
         )
 
