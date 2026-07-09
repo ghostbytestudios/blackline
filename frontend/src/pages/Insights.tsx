@@ -25,19 +25,19 @@ const ICONS: Record<string, LucideIcon> = {
 const SEVERITY = {
   critical: {
     border: "border-l-red-500",
-    badge: "border-red-200 bg-red-50 text-red-600",
+    badge: "border-red-500/30 bg-red-500/10 text-red-400",
     label: "critical",
     Badge: AlertCircle,
   },
   warning: {
     border: "border-l-amber-400",
-    badge: "border-amber-200 bg-amber-50 text-amber-600",
+    badge: "border-amber-500/30 bg-amber-500/10 text-amber-400",
     label: "warning",
     Badge: AlertCircle,
   },
   info: {
     border: "border-l-blue-400",
-    badge: "border-blue-200 bg-blue-50 text-blue-600",
+    badge: "border-blue-500/30 bg-blue-500/10 text-blue-400",
     label: "info",
     Badge: Info,
   },
@@ -54,14 +54,14 @@ function Card({ card }: { card: InsightCard }) {
   const Icon = ICONS[card.icon] ?? Lightbulb;
   const Badge = sev.Badge;
   return (
-    <div className={`rounded-xl border border-slate-200 border-l-4 bg-white p-5 shadow-sm ${sev.border}`}>
+    <div className={`rounded-xl border border-ink-700 border-l-4 bg-ink-800 p-5 shadow-sm ${sev.border}`}>
       <div className="flex gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-900/60 text-slate-400">
           <Icon className="h-5 w-5" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-slate-900">{card.title}</h3>
+            <h3 className="font-semibold text-slate-100">{card.title}</h3>
             <span
               className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium ${sev.badge}`}
             >
@@ -69,11 +69,11 @@ function Card({ card }: { card: InsightCard }) {
               {sev.label}
             </span>
           </div>
-          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{card.detail}</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-400">{card.detail}</p>
           {card.action_label && card.action_route && (
             <Link
               to={card.action_route}
-              className="mt-3 inline-block rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="mt-3 inline-block rounded-lg border border-ink-700 px-3 py-1.5 text-sm font-medium text-slate-300 hover:bg-ink-700/60"
             >
               {card.action_label}
             </Link>
@@ -93,12 +93,12 @@ export default function Insights() {
     <div>
       <PageHeader title="Insights" />
 
-      <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-3">
-        <div className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+      <div className="mb-5 flex items-center justify-between border-b border-ink-700 pb-3">
+        <div className="flex items-center gap-2 text-lg font-semibold text-slate-100">
           <Lightbulb className="h-5 w-5 text-accent" />
           Financial Insights
         </div>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+        <span className="rounded-full border border-ink-700 bg-ink-800 px-3 py-1 text-xs font-medium text-slate-400">
           {cards.length} insight{cards.length === 1 ? "" : "s"}
         </span>
       </div>
@@ -115,7 +115,7 @@ export default function Insights() {
             if (group.length === 0) return null;
             return (
               <section key={key}>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
                   {heading}
                 </div>
                 <div className="space-y-4">

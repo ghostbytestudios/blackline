@@ -12,6 +12,10 @@ goes out to the account aggregator you connected.
 > money. Its budgeting guidance (50/30/20, debt-to-income, etc.) consists of common
 > rules of thumb, not professional advice. It comes with **no warranty** (see [License](#license)).
 
+![Blackline dashboard](docs/dashboard.png)
+
+*The dashboard, running on built-in demo data — no bank connection required to try it.*
+
 ---
 
 ## Table of contents
@@ -52,14 +56,20 @@ login — to a company's cloud. Blackline takes the opposite approach:
 
 ## Features
 
-- **Dashboard** — net worth, monthly spending vs. income, savings rate, and recent activity at a glance.
+- **Dashboard** — a dense, dark command center: spent today/yesterday/this month, a
+  cumulative spend-pace chart (this month vs. last), net worth, income, recurring total,
+  budgets on track, a savings-rate health tile, recent activity, and income-vs-spending
+  history — all on one screen.
+- **Demo mode** — one click loads a realistic six-month fictional household so you can
+  try everything before connecting a bank (and one click removes it).
 - **Accounts** — label each account (checking, savings, investment, credit, loan…) and set savings goals with progress bars.
 - **Transactions** — automatically categorized; correct one and Blackline *learns a rule* and applies it to every similar charge.
 - **Spending & budgets** — category breakdowns, income-vs-spending trends, and inline-editable monthly budgets (with a one-click "suggest from income" using 50/30/20).
 - **Investments** — holdings, allocation, and portfolio value.
-- **Recurring** — auto-detects subscriptions and recurring charges so you can catch what you no longer use.
+- **Recurring** — auto-detects fixed-price subscriptions, bills, and loan payments while ignoring variable retail spending.
 - **Net worth** — historical net-worth tracking that accumulates with each sync.
 - **Insights** — flags spending spikes, budget overruns, idle high-yield-eligible cash, and budgeting-ratio guidance (housing, transport, debt-to-income, 50/30/20).
+- **CSV export** — download your transactions (optionally date-filtered) for spreadsheets or taxes.
 - **Guided tutorial** — an in-app walkthrough that opens on first run and is reopenable anytime via the **?** button.
 
 ---
@@ -73,6 +83,10 @@ login — to a company's cloud. Blackline takes the opposite approach:
 | Key derivation | **Argon2id** (memory-hard) from your passphrase + a per-install random salt. The key lives in memory only while unlocked. |
 | Credentials | Your bank login is handled by SimpleFIN, never by Blackline. The read-only access token is itself encrypted inside the vault. |
 | Egress | Exactly one outbound destination (the SimpleFIN Bridge host), only during a sync you start. |
+| Brute-force resistance | Escalating delays after repeated failed unlock attempts (on top of Argon2id's ~1s/attempt cost). |
+| Auto-lock | The vault locks itself after 15 idle minutes (configurable). |
+| Backups | Each sync first rotates a timestamped copy of the encrypted blob into `data/backups/` (same ciphertext-only safety). |
+| Forgotten passphrase | No recovery — by design. A guarded **reset** on the lock screen destroys the vault so you can start over. |
 
 The full threat model — including known trade-offs — is in **[SECURITY.md](./SECURITY.md)**.
 
@@ -104,8 +118,10 @@ securely connects to your banks and exposes a read-only feed.
 - **You** create the Bridge account and link your banks there. This is by design: it's
   the privacy boundary that keeps your bank credentials out of Blackline entirely.
 
-If you just want to explore the app, you can run it without connecting anything and
-poke around the empty UI.
+**You don't need SimpleFIN to try Blackline.** Create a vault, then go to
+**Settings → Demo Mode → Load demo data** for a realistic fictional household —
+five accounts and six months of activity powering every chart and insight. Remove it
+with one click before connecting your real bank (demo data never mixes with real data).
 
 ---
 
@@ -204,7 +220,7 @@ token needed.
 
 | Page | What it's for |
 |---|---|
-| **Dashboard** | Your financial snapshot: net worth, monthly cash flow, savings rate, recent transactions. |
+| **Dashboard** | Spending pace vs. last month, spent today/yesterday/MTD, net worth, income, recurring total, budget status, savings-rate health, recent activity. |
 | **Accounts** | Set each account's role (checking/savings/investment/credit/loan) and savings goals. Roles drive correct cash-flow and insight calculations. |
 | **Transactions** | Review and re-categorize. Editing a category creates a learned rule applied to all similar charges. |
 | **Spending** | Category pie, income-vs-spending bars, and inline-editable **Monthly Budgets**. Add your income in Settings to unlock "Suggest from income". |
@@ -212,10 +228,15 @@ token needed.
 | **Recurring** | Detected subscriptions and recurring charges. |
 | **Net Worth** | Historical net worth once a few snapshots exist, otherwise a labeled estimate. |
 | **Insights** | Severity-grouped cards: spikes, budget overruns, idle cash, and budgeting-ratio guidance. |
-| **Settings** | Connect/disconnect SimpleFIN, set income, change passphrase. |
+| **Settings** | Connect/disconnect SimpleFIN, demo mode, CSV export, set income, change passphrase. |
 
-**Locking:** Click **Lock Vault** in the sidebar whenever you step away. This drops the
-decryption key from memory; you'll need your passphrase to get back in.
+**Locking:** Click **Lock Vault** in the sidebar whenever you step away — or just walk
+away: the vault auto-locks after 15 idle minutes. Either way, the decryption key is
+dropped from memory and your passphrase is required to get back in.
+
+**Forgot your passphrase?** There is no recovery — the passphrase *is* the key. The
+lock screen has a **"Forgot your passphrase?"** flow that permanently destroys the
+vault (typed confirmation required) so you can start fresh.
 
 **Syncing:** Use **Sync now** in Settings whenever you want fresh data. The app is
 otherwise fully offline.
@@ -228,6 +249,8 @@ All of your data lives in **`backend/data/`**:
 
 - `blackline.db.enc` — your encrypted database.
 - `vault.salt` — the salt used to derive your key.
+- `backups/` — timestamped copies of the encrypted blob, rotated automatically before
+  each sync (the newest five are kept by default).
 
 **Both files are required to decrypt**, and both are excluded from git. To back up,
 copy the entire `backend/data/` folder somewhere safe. To restore, put the files back
@@ -251,6 +274,8 @@ file), prefixed with `BLACKLINE_`. The defaults are secure for local use.
 | `BLACKLINE_ARGON2_TIME_COST` | `3` | Argon2id iterations. |
 | `BLACKLINE_ARGON2_MEMORY_KIB` | `262144` | Argon2id memory (256 MiB). |
 | `BLACKLINE_ARGON2_PARALLELISM` | `4` | Argon2id lanes. |
+| `BLACKLINE_AUTO_LOCK_MINUTES` | `15` | Lock the vault after this many idle minutes (`0` = never). |
+| `BLACKLINE_BACKUP_COUNT` | `5` | Encrypted-blob backups to keep (`0` = disable). |
 
 ---
 
@@ -261,18 +286,22 @@ blackline/
 ├── backend/                 FastAPI app (Python)
 │   ├── app/
 │   │   ├── config.py        Env-driven settings, localhost enforcement
-│   │   ├── db.py            Encrypted in-memory database layer
+│   │   ├── db.py            Encrypted in-memory database layer + backup rotation
+│   │   ├── migrate.py       In-process Alembic runner (migrations apply at unlock)
 │   │   ├── models.py        ORM: accounts, transactions, holdings, budgets, …
 │   │   ├── schemas.py       Pydantic API contracts
-│   │   ├── security/        crypto, key derivation, secret vault, app lock
+│   │   ├── security/        crypto, key derivation, secret vault, app lock, throttle
 │   │   ├── integrations/    SimpleFIN Bridge client (the only network egress)
-│   │   ├── services/        sync, categorization, insights, portfolio, recurring
+│   │   ├── services/        sync, categorization, insights, dashboard, recurring, demo
 │   │   ├── routers/         HTTP API endpoints
-│   │   └── main.py          App wiring, 127.0.0.1 bind, security headers
+│   │   └── main.py          App wiring, 127.0.0.1 bind, security headers, auto-lock
+│   ├── migrations/          Alembic migration scripts (see migrations/README.md)
+│   ├── tests/               pytest suite (~80 tests)
 │   ├── requirements.txt
 │   └── .env.example
-├── frontend/                React + Vite + Tailwind dashboard
+├── frontend/                React + Vite + Tailwind dashboard (dark theme)
 │   └── src/{pages,components,hooks,lib}
+├── docs/                    Screenshots
 ├── README.md
 ├── SECURITY.md              Threat model & controls
 └── LICENSE                  GNU GPL v3
@@ -299,8 +328,8 @@ blackline/
 
 ## Tech stack
 
-- **Backend:** Python, FastAPI, SQLAlchemy, SQLite (in-memory + encrypted blob),
-  cryptography (AES-256-GCM), argon2-cffi, httpx.
+- **Backend:** Python, FastAPI, SQLAlchemy, Alembic, SQLite (in-memory + encrypted blob),
+  cryptography (AES-256-GCM), argon2-cffi, httpx, pytest.
 - **Frontend:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, Recharts.
 - **Aggregation:** SimpleFIN Bridge (read-only, consent-based).
 

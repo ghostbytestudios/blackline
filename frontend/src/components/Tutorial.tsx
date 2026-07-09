@@ -89,7 +89,8 @@ export default function Tutorial() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) setOpen(true);
+    // VITE_SKIP_TUTORIAL keeps automated test/screenshot runs deterministic.
+    if (!localStorage.getItem(STORAGE_KEY) && !import.meta.env.VITE_SKIP_TUTORIAL) setOpen(true);
   }, []);
 
   const markSeen = () => localStorage.setItem(STORAGE_KEY, "1");
@@ -122,24 +123,24 @@ export default function Tutorial() {
     <>
       {launchButton}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
         onClick={close}
       >
         <div
-          className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          className="w-full max-w-md rounded-2xl bg-ink-800 p-6 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start justify-between">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-accent">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-accent">
               <Icon className="h-6 w-6" />
             </div>
-            <button onClick={close} className="text-slate-400 hover:text-slate-600">
+            <button onClick={close} className="text-slate-500 hover:text-slate-300">
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <h2 className="mt-4 text-xl font-bold text-slate-900">{s.title}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">{s.body}</p>
+          <h2 className="mt-4 text-xl font-bold text-slate-100">{s.title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-400">{s.body}</p>
 
           {s.route && s.action && (
             <button
@@ -160,7 +161,7 @@ export default function Tutorial() {
                 <span
                   key={i}
                   className={`h-1.5 rounded-full transition-all ${
-                    i === step ? "w-5 bg-accent" : "w-1.5 bg-slate-200"
+                    i === step ? "w-5 bg-accent" : "w-1.5 bg-ink-700"
                   }`}
                 />
               ))}
@@ -169,7 +170,7 @@ export default function Tutorial() {
               {step > 0 && (
                 <button
                   onClick={() => setStep((v) => v - 1)}
-                  className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  className="flex items-center gap-1 rounded-lg border border-ink-700 px-3 py-1.5 text-sm font-medium text-slate-400 hover:bg-ink-700/60"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Back
@@ -197,7 +198,7 @@ export default function Tutorial() {
           {step === 0 && (
             <button
               onClick={close}
-              className="mt-3 w-full text-center text-xs text-slate-400 hover:text-slate-600"
+              className="mt-3 w-full text-center text-xs text-slate-500 hover:text-slate-300"
             >
               Skip tour
             </button>

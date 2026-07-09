@@ -36,6 +36,9 @@ frontend/vite.config.d.ts
 # --- Claude Code local settings (machine-specific) ---
 .claude/settings.local.json
 
+# --- Local working docs (not part of the published repo) ---
+GAMEPLAN.md
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db

@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import type {
   Account,
   BudgetStatus,
+  DashboardSummary,
   InsightCard,
   InsightsSummary,
   NetWorthPoint,
@@ -43,6 +44,31 @@ export function useChangePassphrase() {
         new_passphrase: b.next,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["status"] }),
+  });
+}
+
+export function useResetVault() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (confirm: string) => api.post<Status>("/reset-vault", { confirm }),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useSeedDemo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ accounts: number; transactions: number }>("/demo/seed"),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useRemoveDemo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.del<{ accounts_removed: number }>("/demo"),
+    onSuccess: () => qc.invalidateQueries(),
   });
 }
 
@@ -102,6 +128,13 @@ export function useTransactions(
   return useQuery({
     queryKey: ["transactions", params],
     queryFn: () => api.get<Transaction[]>(`/transactions${qs ? `?${qs}` : ""}`),
+  });
+}
+
+export function useDashboard() {
+  return useQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => api.get<DashboardSummary>("/dashboard/summary"),
   });
 }
 

@@ -22,6 +22,15 @@ import {
 } from "../hooks/useApi";
 import { Card, EmptyState, Loading, PageHeader } from "../components/ui";
 import { formatMoney, fromMinor, titleCase } from "../lib/format";
+import {
+  AXIS_LINE,
+  AXIS_TICK,
+  LEGEND_STYLE,
+  SERIES,
+  TOOLTIP_ITEM_STYLE,
+  TOOLTIP_LABEL_STYLE,
+  TOOLTIP_STYLE,
+} from "../lib/chartTheme";
 import type { BudgetStatus } from "../lib/types";
 
 function BudgetRow({ budget }: { budget: BudgetStatus }) {
@@ -44,38 +53,38 @@ function BudgetRow({ budget }: { budget: BudgetStatus }) {
 
   const pct = budget.limit_minor > 0 ? (budget.spent_minor / budget.limit_minor) * 100 : 0;
   const over = budget.spent_minor > budget.limit_minor;
-  const barColor = over ? "bg-red-500" : pct >= 80 ? "bg-amber-400" : "bg-accent";
+  const barColor = over ? "bg-red-500/100" : pct >= 80 ? "bg-amber-400" : "bg-accent";
 
   return (
     <div>
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-slate-700">{titleCase(budget.category)}</span>
+        <span className="font-medium text-slate-300">{titleCase(budget.category)}</span>
         <div className="flex items-center gap-2">
-          <span className={`font-mono tnum ${over ? "text-red-500" : "text-slate-500"}`}>
+          <span className={`font-mono tnum ${over ? "text-red-500" : "text-slate-400"}`}>
             {formatMoney(budget.spent_minor)}
           </span>
-          <span className="text-slate-400">/</span>
+          <span className="text-slate-500">/</span>
           <div className="relative">
-            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">$</span>
             <input
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
               onBlur={commit}
               onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
               inputMode="decimal"
-              className="w-20 rounded border border-slate-200 py-1 pl-4 pr-1 text-right font-mono text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="w-20 rounded border border-ink-700 py-1 pl-4 pr-1 text-right font-mono text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
           <button
             onClick={() => delBudget.mutate(budget.category)}
-            className="text-slate-300 hover:text-red-500"
+            className="text-slate-600 hover:text-red-500"
             title="Remove budget"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
-      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-ink-700">
         <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
       </div>
     </div>
@@ -110,12 +119,12 @@ function Budgets() {
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-semibold text-slate-900">Monthly Budgets</h2>
+        <h2 className="font-semibold text-slate-100">Monthly Budgets</h2>
         {hasIncome && (
           <button
             onClick={() => suggest.mutate()}
             disabled={suggest.isPending}
-            className="flex items-center gap-1.5 rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-blue-50 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-blue-500/10 disabled:opacity-50"
             title="Fill in recommended budgets from your income (won't overwrite existing)"
           >
             <Sparkles className="h-4 w-4" />
@@ -124,7 +133,7 @@ function Budgets() {
         )}
       </div>
       {rows.length === 0 ? (
-        <p className="mb-4 text-sm text-slate-400">
+        <p className="mb-4 text-sm text-slate-500">
           No budgets yet. Add one below to get over-budget alerts in Insights.
         </p>
       ) : (
@@ -140,7 +149,7 @@ function Budgets() {
           <select
             value={newCat}
             onChange={(e) => setNewCat(e.target.value)}
-            className="rounded-lg border border-slate-300 px-2 py-2 text-sm"
+            className="rounded-lg border border-ink-700 px-2 py-2 text-sm"
           >
             {available.map((c) => (
               <option key={c} value={c}>
@@ -149,14 +158,14 @@ function Budgets() {
             ))}
           </select>
           <div className="relative">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
             <input
               value={newAmt}
               onChange={(e) => setNewAmt(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && add()}
               inputMode="decimal"
               placeholder="500"
-              className="w-28 rounded-lg border border-slate-300 py-2 pl-5 pr-2 text-sm"
+              className="w-28 rounded-lg border border-ink-700 py-2 pl-5 pr-2 text-sm"
             />
           </div>
           <button
@@ -201,37 +210,48 @@ export default function Spending() {
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card>
-            <h2 className="mb-2 font-semibold text-slate-900">By Category</h2>
+            <h2 className="mb-2 font-semibold text-slate-100">By Category</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100}>
+                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} stroke="none">
                   {pieData.map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
-                <Legend />
+                <Tooltip
+                  formatter={(v: number) => `$${v.toFixed(2)}`}
+                  contentStyle={TOOLTIP_STYLE}
+                  itemStyle={TOOLTIP_ITEM_STYLE}
+                  labelStyle={TOOLTIP_LABEL_STYLE}
+                />
+                <Legend wrapperStyle={LEGEND_STYLE} />
               </PieChart>
             </ResponsiveContainer>
           </Card>
 
           <Card>
-            <h2 className="mb-2 font-semibold text-slate-900">Income vs Spending</h2>
+            <h2 className="mb-2 font-semibold text-slate-100">Income vs Spending</h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={barData}>
-                <XAxis dataKey="month" fontSize={12} />
-                <YAxis fontSize={12} />
-                <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
-                <Legend />
-                <Bar dataKey="Income" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Spending" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                <XAxis dataKey="month" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} />
+                <YAxis tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} />
+                <Tooltip
+                  formatter={(v: number) => `$${v.toFixed(2)}`}
+                  contentStyle={TOOLTIP_STYLE}
+                  itemStyle={TOOLTIP_ITEM_STYLE}
+                  labelStyle={TOOLTIP_LABEL_STYLE}
+                  cursor={{ fill: "#1b2740", opacity: 0.5 }}
+                />
+                <Legend wrapperStyle={LEGEND_STYLE} />
+                <Bar dataKey="Income" fill={SERIES.income} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Spending" fill={SERIES.spending} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
 
           <Card className="lg:col-span-2">
-            <h2 className="mb-3 font-semibold text-slate-900">Top Categories</h2>
-            <div className="divide-y divide-slate-100">
+            <h2 className="mb-3 font-semibold text-slate-100">Top Categories</h2>
+            <div className="divide-y divide-ink-700">
               {cats.map((c, i) => (
                 <div key={c.category} className="flex items-center justify-between py-2.5">
                   <div className="flex items-center gap-2">
@@ -239,10 +259,10 @@ export default function Spending() {
                       className="h-3 w-3 rounded-full"
                       style={{ background: COLORS[i % COLORS.length] }}
                     />
-                    <span className="font-medium text-slate-800">{titleCase(c.category)}</span>
-                    <span className="text-xs text-slate-400">({c.txn_count} txns)</span>
+                    <span className="font-medium text-slate-200">{titleCase(c.category)}</span>
+                    <span className="text-xs text-slate-500">({c.txn_count} txns)</span>
                   </div>
-                  <span className="font-mono font-semibold tnum text-slate-900">
+                  <span className="font-mono font-semibold tnum text-slate-100">
                     {formatMoney(c.total_minor)}
                   </span>
                 </div>

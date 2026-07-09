@@ -10,11 +10,23 @@ from ..deps import require_unlocked
 from sqlalchemy import select
 
 from ..models import NetWorthSnapshot
-from ..schemas import InsightCard, InsightsSummary, NetWorthPoint, RecurringCharge
+from ..schemas import (
+    DashboardSummary,
+    InsightCard,
+    InsightsSummary,
+    NetWorthPoint,
+    RecurringCharge,
+)
+from ..services import dashboard as dashboard_service
 from ..services import insights as insights_service
 from ..services import recurring as recurring_service
 
 router = APIRouter(tags=["insights"], dependencies=[Depends(require_unlocked)])
+
+
+@router.get("/dashboard/summary", response_model=DashboardSummary)
+def dashboard_summary(db: Session = Depends(get_db)) -> DashboardSummary:
+    return dashboard_service.build_dashboard(db)
 
 
 @router.get("/insights/summary", response_model=InsightsSummary)

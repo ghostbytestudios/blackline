@@ -22,20 +22,20 @@ export default function Recurring() {
         <>
           <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <Card>
-              <div className="text-sm font-medium text-slate-500">Recurring / month</div>
-              <div className="mt-1 font-mono text-3xl font-bold tnum text-slate-900">
+              <div className="text-sm font-medium text-slate-400">Recurring / month</div>
+              <div className="mt-1 font-mono text-3xl font-bold tnum text-slate-100">
                 {formatMoney(monthlyTotal)}
               </div>
             </Card>
             <Card>
-              <div className="text-sm font-medium text-slate-500">Recurring / year</div>
-              <div className="mt-1 font-mono text-3xl font-bold tnum text-slate-900">
+              <div className="text-sm font-medium text-slate-400">Recurring / year</div>
+              <div className="mt-1 font-mono text-3xl font-bold tnum text-slate-100">
                 {formatMoney(yearlyTotal)}
               </div>
             </Card>
             <Card>
-              <div className="text-sm font-medium text-slate-500">Subscriptions</div>
-              <div className="mt-1 font-mono text-3xl font-bold tnum text-slate-900">
+              <div className="text-sm font-medium text-slate-400">Subscriptions</div>
+              <div className="mt-1 font-mono text-3xl font-bold tnum text-slate-100">
                 {items.length}
               </div>
             </Card>
@@ -43,7 +43,7 @@ export default function Recurring() {
 
           <Card className="overflow-hidden p-0">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+              <thead className="border-b border-ink-700 bg-ink-900/60 text-left text-xs uppercase tracking-wider text-slate-400">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Merchant</th>
                   <th className="px-5 py-3 font-semibold">Cadence</th>
@@ -53,26 +53,26 @@ export default function Recurring() {
                   <th className="px-5 py-3 text-right font-semibold">~ / month</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-ink-700">
                 {items.map((r, i) => (
-                  <tr key={i} className="hover:bg-slate-50">
+                  <tr key={i} className="hover:bg-ink-700/60">
                     <td className="px-5 py-3">
-                      <div className="flex items-center gap-2 font-medium text-slate-800">
+                      <div className="flex items-center gap-2 font-medium text-slate-200">
                         <Repeat className="h-4 w-4 text-accent" />
                         {r.name}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-slate-500">{titleCase(r.cadence)}</td>
+                    <td className="px-5 py-3 text-slate-400">{titleCase(r.cadence)}</td>
                     <td className="px-5 py-3">
                       <CategoryChip category={r.category} />
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3 text-slate-500">
+                    <td className="whitespace-nowrap px-5 py-3 text-slate-400">
                       {formatDate(r.last_date)}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3 text-right font-mono tnum text-slate-700">
+                    <td className="whitespace-nowrap px-5 py-3 text-right font-mono tnum text-slate-300">
                       {formatMoney(r.typical_amount_minor)}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3 text-right font-mono font-semibold tnum text-slate-900">
+                    <td className="whitespace-nowrap px-5 py-3 text-right font-mono font-semibold tnum text-slate-100">
                       {formatMoney(r.monthly_estimate_minor)}
                     </td>
                   </tr>

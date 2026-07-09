@@ -13,9 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
+from . import audit
 from .config import get_settings
-from .db import DatabaseLocked
-from .routers import accounts, auth, budgets, connect, insights, profile, transactions
+from .db import DatabaseLocked, read_scope
+from .routers import accounts, auth, budgets, connect, demo, insights, profile, transactions
+from .security.lock import app_lock
 
 settings = get_settings()
 
@@ -43,6 +45,24 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )
+
+
+# Requests to these paths don't count as user activity: the frontend polls/refetches
+# them passively (e.g. on window focus), and a focused-but-idle window should not keep
+# the vault unlocked forever.
+_PASSIVE_PATHS = {"/health", "/api/status"}
+
+
+@app.middleware("http")
+async def auto_lock(request: Request, call_next) -> Response:
+    if app_lock.should_auto_lock():
+        # Audit while the DB is still open; locking closes it.
+        with read_scope() as db:
+            audit.record(db, "auto_lock", detail=f"idle>{settings.auto_lock_minutes}m")
+        app_lock.lock()
+    elif request.method != "OPTIONS" and request.url.path not in _PASSIVE_PATHS:
+        app_lock.touch()
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -76,6 +96,7 @@ for r in (
     insights.router,
     budgets.router,
     profile.router,
+    demo.router,
 ):
     app.include_router(r, prefix="/api")
 

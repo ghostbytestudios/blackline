@@ -1,14 +1,18 @@
-"""Transaction listing, filtering, and manual categorization."""
+"""Transaction listing, filtering, manual categorization, and CSV export."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import csv
+import io
+from datetime import date, datetime, time, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import require_unlocked
-from ..models import CategoryRule, Transaction
+from ..models import Account, CategoryRule, Transaction
 from ..schemas import CategoryRuleIn, CategoryUpdate, TransactionOut
 from ..services import categorize
 
@@ -30,6 +34,71 @@ def list_transactions(
         stmt = stmt.where(Transaction.category == category)
     stmt = stmt.limit(limit).offset(offset)
     return list(db.scalars(stmt))
+
+
+def _csv_amount(minor: int) -> str:
+    """Exact decimal string from integer cents (no float representation issues)."""
+    sign = "-" if minor < 0 else ""
+    return f"{sign}{abs(minor) // 100}.{abs(minor) % 100:02d}"
+
+
+def _csv_text(value: str | None) -> str:
+    """Neutralize spreadsheet formula injection: bank-supplied text starting with a
+    formula character (=, +, @, tab) gets a leading apostrophe. '-' is left alone —
+    it's far more often a legitimate leading hyphen than an attack."""
+    text = value or ""
+    return f"'{text}" if text[:1] in ("=", "+", "@", "\t") else text
+
+
+@router.get("/transactions/export.csv")
+def export_csv(
+    db: Session = Depends(get_db),
+    account_id: int | None = None,
+    category: str | None = None,
+    start: date | None = None,
+    end: date | None = None,
+) -> Response:
+    """Download transactions as CSV (oldest first), optionally filtered."""
+    stmt = select(Transaction).order_by(Transaction.posted_at.asc())
+    if account_id is not None:
+        stmt = stmt.where(Transaction.account_id == account_id)
+    if category is not None:
+        stmt = stmt.where(Transaction.category == category)
+    if start is not None:
+        stmt = stmt.where(Transaction.posted_at >= datetime.combine(start, time.min, timezone.utc))
+    if end is not None:
+        stmt = stmt.where(Transaction.posted_at <= datetime.combine(end, time.max, timezone.utc))
+
+    accounts = {a.id: a for a in db.scalars(select(Account))}
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n")
+    writer.writerow(
+        ["date", "account", "payee", "description", "amount", "currency", "category", "pending", "memo"]
+    )
+    for t in db.scalars(stmt):
+        acct = accounts.get(t.account_id)
+        writer.writerow(
+            [
+                t.posted_at.date().isoformat(),
+                _csv_text(acct.name if acct else ""),
+                _csv_text(t.payee),
+                _csv_text(t.description),
+                _csv_amount(t.amount_minor),
+                acct.currency if acct else "USD",
+                t.category,
+                "yes" if t.pending else "no",
+                _csv_text(t.memo),
+            ]
+        )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="blackline-transactions-{stamp}.csv"'
+        },
+    )
 
 
 @router.patch("/transactions/{txn_id}/category", response_model=TransactionOut)

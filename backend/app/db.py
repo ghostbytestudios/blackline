@@ -17,10 +17,13 @@ to decrypt the blob (authenticated encryption) — there is no separate password
 from __future__ import annotations
 
 import os
+import shutil
 import sqlite3
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -92,10 +95,14 @@ class SecureDatabase:
         event.listen(self._sessionmaker, "after_commit", self._on_commit)
 
         from . import models  # noqa: F401  (register tables on Base.metadata)
+        from .migrate import upgrade_to_head
 
-        Base.metadata.create_all(self._engine)
         if fresh:
-            self.persist()  # materialize the encrypted file immediately
+            # Fresh vault: create the full current schema directly. Existing vaults
+            # evolve exclusively through migration scripts (see app/migrate.py).
+            Base.metadata.create_all(self._engine)
+        upgrade_to_head(self._engine, fresh=fresh)
+        self.persist()  # materialize the stamp/migrations (and fresh vaults) immediately
         return fresh
 
     def _on_commit(self, _session: Session) -> None:
@@ -133,6 +140,29 @@ class SecureDatabase:
             tmp = enc_path.with_suffix(".tmp")
             tmp.write_bytes(nonce + ciphertext)
             os.replace(tmp, enc_path)  # atomic on the same filesystem
+
+    def rotate_backup(self) -> Path | None:
+        """Copy the current encrypted blob into the backup dir and prune old copies.
+
+        The blob is AES-GCM ciphertext, so a copy is exactly as safe at rest as the
+        original. The atomic write in `persist` protects against crashes mid-write;
+        rotation protects against disk faults and a corrupted blob being the only copy.
+        Returns the backup path, or None if there is nothing to back up / disabled.
+        """
+        settings = get_settings()
+        src = settings.db_enc_path
+        if not src.exists() or settings.backup_count <= 0:
+            return None
+        backup_dir = settings.backup_dir
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        dest = backup_dir / f"{src.name}.{stamp}.bak"
+        with self._io_lock:  # don't copy while persist() is mid-replace
+            shutil.copy2(src, dest)
+        backups = sorted(backup_dir.glob(f"{src.name}.*.bak"))
+        for old in backups[: -settings.backup_count]:
+            old.unlink(missing_ok=True)
+        return dest
 
     def close(self) -> None:
         """Drop the in-memory DB and zeroize references. Committed data is already persisted."""

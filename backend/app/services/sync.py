@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import audit
+from ..db import secure_db
 from ..integrations import simplefin
 from ..models import Account, CategoryRule, Holding, Transaction
 from ..schemas import SyncResult
@@ -31,6 +32,9 @@ def _get_access_url(db: Session) -> str:
 def run_sync(db: Session, lookback_days: int = 90) -> SyncResult:
     """Pull recent data and upsert. Returns a summary; raises on hard failures."""
     access_url = _get_access_url(db)
+    # Snapshot the pre-sync blob so a disk fault can lose at most the syncs since
+    # the newest backup.
+    secure_db.rotate_backup()
     start = datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
     try:

@@ -21,12 +21,36 @@ class ChangePassphraseRequest(BaseModel):
     new_passphrase: str = Field(min_length=8, max_length=1024)
 
 
+class ResetVaultRequest(BaseModel):
+    """Destroys the vault. `confirm` must be the exact phrase, typed by the user."""
+
+    confirm: str
+
+
+# --- Dashboard ---
+class DailyOutflowPoint(BaseModel):
+    day: int  # day of month (1-based)
+    cumulative_outflow_minor: int
+
+
+class DashboardSummary(BaseModel):
+    as_of: date
+    spent_today_minor: int
+    spent_yesterday_minor: int
+    spent_mtd_minor: int
+    income_mtd_minor: int
+    days_in_month: int
+    this_month: list[DailyOutflowPoint]  # cumulative, through today
+    last_month: list[DailyOutflowPoint]  # cumulative, full month
+
+
 class StatusResponse(BaseModel):
     initialized: bool
     unlocked: bool
     connected: bool  # SimpleFIN access URL present
     account_count: int
     last_sync: datetime | None = None
+    demo_data: bool = False  # demo household loaded (see services/demo.py)
 
 
 # --- Domain read models ---

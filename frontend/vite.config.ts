@@ -11,7 +11,8 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000",
+        // Override for test/demo stacks running the API on another port.
+        target: process.env.BLACKLINE_API_TARGET ?? "http://127.0.0.1:8000",
         changeOrigin: false,
       },
     },

@@ -105,12 +105,15 @@ def detect_recurring(db: Session, days: int = 200) -> list[RecurringCharge]:
         if mean_amt <= 0:
             continue
 
-        # Fixed-price test: most charges share one exact amount, or variance is tiny.
+        # Fixed-price test: most charges share one exact *repeated* amount, or variance
+        # is tiny. The modal test needs modal_count >= 2 — with two charges of different
+        # amounts, "1 of 2" is not a mode, it's just two purchases at the same store.
         amount_counts = Counter(amounts)
         modal_amount, modal_count = amount_counts.most_common(1)[0]
         modal_fraction = modal_count / len(amounts)
         cv = statistics.pstdev(amounts) / mean_amt
-        if modal_fraction < _MODAL_AMOUNT_FRACTION and cv > _MAX_AMOUNT_CV:
+        modal_ok = modal_count >= 2 and modal_fraction >= _MODAL_AMOUNT_FRACTION
+        if not modal_ok and cv > _MAX_AMOUNT_CV:
             continue  # variable amounts -> retail, not a subscription/bill
 
         intervals = [

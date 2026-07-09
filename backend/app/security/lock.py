@@ -9,17 +9,55 @@ passphrase via a verifier secret.
 from __future__ import annotations
 
 import hmac
+import shutil
 import threading
+import time
 
 from ..config import get_settings
 from ..db import secure_db, session_scope
 from . import crypto, vault
 
 
+class UnlockThrottle:
+    """Escalating delay after repeated failed unlock attempts.
+
+    In-memory only: a process restart resets it. That's acceptable — the threat is
+    scripted guessing against the local API, and Argon2id already costs ~1s per
+    attempt; this keeps the cost growing instead of constant.
+    """
+
+    _FREE_ATTEMPTS = 3  # failures allowed before delays kick in
+    _MAX_DELAY_SECONDS = 60.0
+
+    def __init__(self) -> None:
+        self._failures = 0
+        self._not_before = 0.0  # time.monotonic() before which attempts are refused
+        self._mutex = threading.Lock()
+
+    def retry_after(self) -> float:
+        """Seconds until the next attempt is allowed (0 = allowed now)."""
+        with self._mutex:
+            return max(0.0, self._not_before - time.monotonic())
+
+    def record_failure(self) -> None:
+        with self._mutex:
+            self._failures += 1
+            over = self._failures - self._FREE_ATTEMPTS
+            if over > 0:
+                delay = min(2.0**over, self._MAX_DELAY_SECONDS)
+                self._not_before = time.monotonic() + delay
+
+    def reset(self) -> None:
+        with self._mutex:
+            self._failures = 0
+            self._not_before = 0.0
+
+
 class AppLock:
     def __init__(self) -> None:
         self._key: bytes | None = None
         self._mutex = threading.Lock()
+        self._last_activity = time.monotonic()
 
     @property
     def is_initialized(self) -> bool:
@@ -60,7 +98,19 @@ class AppLock:
                     vault.write_verifier(db, key)
 
             self._key = key
+            self._last_activity = time.monotonic()
             return True
+
+    def touch(self) -> None:
+        """Record API activity; drives the inactivity auto-lock."""
+        self._last_activity = time.monotonic()
+
+    def should_auto_lock(self) -> bool:
+        """True if the vault is unlocked and has been idle past the configured timeout."""
+        timeout_minutes = get_settings().auto_lock_minutes
+        if timeout_minutes <= 0 or not self.is_unlocked:
+            return False
+        return (time.monotonic() - self._last_activity) >= timeout_minutes * 60
 
     def change_passphrase(self, current_passphrase: str, new_passphrase: str) -> bool:
         """Re-key the vault to a new passphrase. Returns False if current is wrong.
@@ -94,6 +144,22 @@ class AppLock:
             secure_db.close()
             self._key = None
 
+    def reset_vault(self) -> None:
+        """Destroy the vault: encrypted blob, salt, and all backups. Irreversible.
+
+        Exists for the forgotten-passphrase case — without the passphrase the data is
+        undecryptable anyway, so this is a wipe, not a bypass. Leaves the app in the
+        uninitialized state (next unlock creates a fresh vault).
+        """
+        with self._mutex:
+            secure_db.close()
+            self._key = None
+            settings = get_settings()
+            settings.db_enc_path.unlink(missing_ok=True)
+            settings.salt_path.unlink(missing_ok=True)
+            if settings.backup_dir.exists():
+                shutil.rmtree(settings.backup_dir, ignore_errors=True)
+
     def require_key(self) -> bytes:
         if self._key is None:
             raise LockedError("application is locked; unlock with your passphrase first")
@@ -104,5 +170,6 @@ class LockedError(Exception):
     """Raised when an operation needs the vault unlocked but it isn't."""
 
 
-# Process-wide singleton.
+# Process-wide singletons.
 app_lock = AppLock()
+unlock_throttle = UnlockThrottle()

@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     argon2_memory_kib: int = 262_144  # 256 MiB
     argon2_parallelism: int = 4
 
+    # --- Session & backups ---
+    auto_lock_minutes: int = 15  # lock the vault after this many idle minutes (0 = never)
+    backup_count: int = 5  # encrypted-blob backups to keep (0 = disable backups)
+
     @property
     def salt_path(self) -> Path:
         return self.data_dir / "vault.salt"
@@ -47,6 +51,11 @@ class Settings(BaseSettings):
     def db_enc_path(self) -> Path:
         """Encrypted database blob (AES-256-GCM). The only on-disk form of the DB."""
         return self.data_dir / "blackline.db.enc"
+
+    @property
+    def backup_dir(self) -> Path:
+        """Rotated copies of the encrypted blob (same ciphertext-only safety as the original)."""
+        return self.data_dir / "backups"
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)

@@ -6,6 +6,7 @@ export interface Status {
   connected: boolean;
   account_count: number;
   last_sync: string | null;
+  demo_data: boolean;
 }
 
 export interface Account {
@@ -118,6 +119,22 @@ export interface InsightsSummary {
   top_categories: CategorySpend[];
   monthly_trends: MonthlyTrend[];
   observations: string[];
+}
+
+export interface DailyOutflowPoint {
+  day: number;
+  cumulative_outflow_minor: number;
+}
+
+export interface DashboardSummary {
+  as_of: string;
+  spent_today_minor: number;
+  spent_yesterday_minor: number;
+  spent_mtd_minor: number;
+  income_mtd_minor: number;
+  days_in_month: number;
+  this_month: DailyOutflowPoint[];
+  last_month: DailyOutflowPoint[];
 }
 
 export interface SyncResult {

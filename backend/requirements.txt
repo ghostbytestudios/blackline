@@ -8,6 +8,9 @@ pydantic==2.13.4
 pydantic-settings==2.14.2
 SQLAlchemy==2.0.51
 
+# Schema migrations (run in-process against the decrypted in-memory DB)
+alembic==1.18.5
+
 # HTTP client for outbound aggregator sync (the only outbound network use)
 httpx==0.28.1
 
