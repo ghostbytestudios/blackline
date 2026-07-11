@@ -98,6 +98,9 @@ class TransactionOut(BaseModel):
     category_source: str
     note: str | None = None
     tags: list[str] = []
+    transfer_peer_id: int | None = None  # matched internal transfer leg
+    parent_id: int | None = None  # set on split children
+    is_split_parent: bool = False  # excluded from all aggregations
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -173,12 +176,52 @@ class CategoryRuleIn(BaseModel):
     priority: int = 100
 
 
+class CategoryRuleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    pattern: str
+    category: str
+    priority: int
+    created_at: datetime
+    match_count: int = 0  # transactions this rule currently decides
+
+
+class TransferMatchResult(BaseModel):
+    pairs_matched: int
+
+
+class SplitPart(BaseModel):
+    category: str = Field(min_length=1, max_length=64)
+    amount_minor: int
+    note: str | None = Field(default=None, max_length=500)
+
+    @field_validator("amount_minor")
+    @classmethod
+    def _nonzero(cls, v: int) -> int:
+        if v == 0:
+            raise ValueError("A split part cannot be zero.")
+        return v
+
+
+class SplitRequest(BaseModel):
+    parts: list[SplitPart] = Field(min_length=2, max_length=20)
+
+
 class ProfileIn(BaseModel):
-    gross_annual_income_minor: int = Field(ge=0, le=1_000_000_000_00)
+    """Partial update: omitted fields are left unchanged; sending
+    net_monthly_income_minor as null clears the manual override."""
+
+    gross_annual_income_minor: int | None = Field(default=None, ge=0, le=1_000_000_000_00)
+    net_monthly_income_minor: int | None = Field(default=None, ge=0, le=100_000_000_00)
 
 
 class ProfileOut(BaseModel):
     gross_annual_income_minor: int
+    net_monthly_income_minor: int | None = None  # manual override, if set
+    # Resolved take-home used by guidance, and where it came from:
+    # "manual" | "observed" (recurring payroll) | "estimated" (75% of gross) | "none"
+    take_home_monthly_minor: int = 0
+    take_home_source: str = "none"
 
 
 class BudgetIn(BaseModel):

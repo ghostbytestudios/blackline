@@ -61,6 +61,36 @@ def classify(amount_minor: int, account_type: str, category: str) -> tuple[int, 
     return (amount_minor, 0) if amount_minor > 0 else (0, -amount_minor)
 
 
+def take_home_monthly_minor(db: Session) -> tuple[int, str]:
+    """Resolve monthly take-home pay, best source first.
+
+    1. "manual"    — the user typed what their paystub says (profile override).
+    2. "observed"  — recurring income streams detected in their own deposits;
+                     exact and self-updating, already net of withholding/401k.
+    3. "estimated" — 75% of gross/12, the crude fallback when nothing better exists.
+    """
+    from ..models import Profile
+
+    profile = db.get(Profile, 1)
+    if profile and profile.net_monthly_income_minor:
+        return profile.net_monthly_income_minor, "manual"
+
+    from .recurring import detect_streams
+
+    observed = sum(
+        s.charge.monthly_estimate_minor
+        for s in detect_streams(db, direction="in")
+        if s.charge.category == "income"  # payroll/interest, not inbound transfers
+    )
+    if observed > 0:
+        return observed, "observed"
+
+    gross = profile.gross_annual_income_minor if profile else 0
+    if gross > 0:
+        return int(gross / 12 * TAKE_HOME_FRACTION), "estimated"
+    return 0, "none"
+
+
 def effective_account_types(db: Session) -> dict[int, str]:
     """Map account id -> effective type, applying user role overrides over the auto type."""
     overrides = {
@@ -78,7 +108,11 @@ def current_month_category_spend(db: Session) -> dict[str, int]:
     account_type = effective_account_types(db)
     out: dict[str, int] = defaultdict(int)
     for t in db.scalars(
-        select(Transaction).where(Transaction.posted_at >= start, Transaction.pending.is_(False))
+        select(Transaction).where(
+            Transaction.posted_at >= start,
+            Transaction.pending.is_(False),
+            Transaction.is_split_parent.is_(False),
+        )
     ):
         _, outflow = classify(t.amount_minor, account_type.get(t.account_id, "depository"), t.category)
         if outflow > 0:
@@ -124,6 +158,7 @@ def build_summary(db: Session, days: int = 90) -> InsightsSummary:
             select(Transaction).where(
                 Transaction.posted_at >= start,
                 Transaction.pending.is_(False),
+                Transaction.is_split_parent.is_(False),
             )
         )
     )
@@ -197,7 +232,9 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
     rows = list(
         db.scalars(
             select(Transaction).where(
-                Transaction.posted_at >= start, Transaction.pending.is_(False)
+                Transaction.posted_at >= start,
+                Transaction.pending.is_(False),
+                Transaction.is_split_parent.is_(False),
             )
         )
     )
@@ -432,17 +469,19 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
             )
         )
 
-    # 6) Income-based guidance (50/30/20 and ratio rules) — only if income is set.
+    # 6) Income-based guidance. Lender-style ratios (housing, DTI) are defined on
+    #    gross; the 50/30/20 and car guidelines are take-home rules, so they use the
+    #    resolved take-home (manual > observed payroll > estimate from gross).
     from ..models import Profile
 
     profile = db.get(Profile, 1)
     gross_monthly = (profile.gross_annual_income_minor / 12) if profile else 0
-    if gross_monthly > 0:
-        cur_spend = {cat: cat_month.get((cur, cat), 0) for _, cat in cat_month if _ == cur}
-        take_home = gross_monthly * TAKE_HOME_FRACTION
+    take_home, _th_source = take_home_monthly_minor(db)
+    cur_spend = {cat: cat_month.get((cur, cat), 0) for _, cat in cat_month if _ == cur}
+    housing = cur_spend.get("housing", 0)
 
+    if gross_monthly > 0:
         # Housing <= 30% of gross.
-        housing = cur_spend.get("housing", 0)
         if housing > 0:
             hp = housing / gross_monthly * 100
             if hp > 30:
@@ -458,26 +497,6 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
                         icon="trending-up",
                         action_label="View Spending",
                         action_route="/spending",
-                    )
-                )
-
-        # Car / transportation <= 10% of take-home.
-        transport = cur_spend.get("transport", 0)
-        if transport > 0 and take_home > 0:
-            tp = transport / take_home * 100
-            if tp > 10:
-                cards.append(
-                    InsightCard(
-                        id="guide-transport",
-                        title="Transportation Costs Above Guideline",
-                        detail=(
-                            f"Transportation is {_usd(transport)}/mo — {tp:.0f}% of estimated "
-                            "take-home. Keeping total car costs near 10% leaves more for savings."
-                        ),
-                        severity="warning",
-                        icon="trending-up",
-                        action_label="View Transactions",
-                        action_route="/transactions",
                     )
                 )
 
@@ -501,15 +520,43 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
                     )
                 )
 
-        # 50/30/20 reality check.
+    if take_home > 0:
+        source_label = {
+            "manual": "take-home pay",
+            "observed": "take-home (from your deposits)",
+            "estimated": "estimated take-home",
+        }.get(_th_source, "take-home pay")
+
+        # Car / transportation <= 10% of take-home.
+        transport = cur_spend.get("transport", 0)
+        if transport > 0:
+            tp = transport / take_home * 100
+            if tp > 10:
+                cards.append(
+                    InsightCard(
+                        id="guide-transport",
+                        title="Transportation Costs Above Guideline",
+                        detail=(
+                            f"Transportation is {_usd(transport)}/mo — {tp:.0f}% of "
+                            f"{source_label}. Keeping total car costs near 10% leaves more "
+                            "for savings."
+                        ),
+                        severity="warning",
+                        icon="trending-up",
+                        action_label="View Transactions",
+                        action_route="/transactions",
+                    )
+                )
+
+        # 50/30/20 reality check — a take-home rule, graded against take-home.
         needs = sum(cur_spend.get(c, 0) for c in NEEDS_CATEGORIES)
         wants = sum(cur_spend.get(c, 0) for c in WANTS_CATEGORIES)
         total_spend = monthly_out[cur]
-        savings = gross_monthly - total_spend  # implied surplus (savings + leftover)
+        savings = take_home - total_spend  # implied surplus (savings + leftover)
         np_, wp, sp = (
-            needs / gross_monthly * 100,
-            wants / gross_monthly * 100,
-            savings / gross_monthly * 100,
+            needs / take_home * 100,
+            wants / take_home * 100,
+            savings / take_home * 100,
         )
         off_track = np_ > 60 or wp > 40 or sp < 10
         cards.append(
@@ -517,8 +564,9 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
                 id="guide-503020",
                 title="50/30/20 Check" + (" — Off Target" if off_track else ""),
                 detail=(
-                    f"This month: needs {np_:.0f}%, wants {wp:.0f}%, savings {sp:.0f}% of gross "
-                    "income. The 50/30/20 starting point is 50% needs, 30% wants, 20% savings."
+                    f"This month: needs {np_:.0f}%, wants {wp:.0f}%, savings {sp:.0f}% of "
+                    f"{source_label}. The 50/30/20 starting point is 50% needs, 30% wants, "
+                    "20% savings."
                 ),
                 severity="warning" if off_track else "info",
                 icon="activity",

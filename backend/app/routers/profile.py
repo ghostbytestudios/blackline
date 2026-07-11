@@ -9,6 +9,7 @@ from ..db import get_db
 from ..deps import require_unlocked
 from ..models import Profile
 from ..schemas import ProfileIn, ProfileOut
+from ..services.insights import take_home_monthly_minor
 
 router = APIRouter(tags=["profile"], dependencies=[Depends(require_unlocked)])
 
@@ -22,15 +23,29 @@ def _get_or_create(db: Session) -> Profile:
     return profile
 
 
+def _to_out(db: Session, profile: Profile) -> ProfileOut:
+    take_home, source = take_home_monthly_minor(db)
+    return ProfileOut(
+        gross_annual_income_minor=profile.gross_annual_income_minor,
+        net_monthly_income_minor=profile.net_monthly_income_minor,
+        take_home_monthly_minor=take_home,
+        take_home_source=source,
+    )
+
+
 @router.get("/profile", response_model=ProfileOut)
-def get_profile(db: Session = Depends(get_db)) -> Profile:
-    return _get_or_create(db)
+def get_profile(db: Session = Depends(get_db)) -> ProfileOut:
+    return _to_out(db, _get_or_create(db))
 
 
 @router.put("/profile", response_model=ProfileOut)
-def put_profile(body: ProfileIn, db: Session = Depends(get_db)) -> Profile:
+def put_profile(body: ProfileIn, db: Session = Depends(get_db)) -> ProfileOut:
     profile = _get_or_create(db)
-    profile.gross_annual_income_minor = body.gross_annual_income_minor
+    fields = body.model_dump(exclude_unset=True)
+    if fields.get("gross_annual_income_minor") is not None:
+        profile.gross_annual_income_minor = fields["gross_annual_income_minor"]
+    if "net_monthly_income_minor" in fields:  # explicit null clears the override
+        profile.net_monthly_income_minor = fields["net_monthly_income_minor"]
     db.commit()
     db.refresh(profile)
-    return profile
+    return _to_out(db, profile)

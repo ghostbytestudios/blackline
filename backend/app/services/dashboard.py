@@ -46,6 +46,7 @@ def build_dashboard(db: Session) -> DashboardSummary:
         select(Transaction).where(
             Transaction.posted_at >= datetime.combine(prev_start, time.min, timezone.utc),
             Transaction.pending.is_(False),
+            Transaction.is_split_parent.is_(False),
         )
     )
 

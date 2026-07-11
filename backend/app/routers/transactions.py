@@ -16,8 +16,17 @@ from sqlalchemy import func, or_
 from ..db import get_db
 from ..deps import require_unlocked
 from ..models import Account, CategoryRule, Transaction
-from ..schemas import CategoryRuleIn, CategoryUpdate, TransactionAnnotate, TransactionOut
+from ..schemas import (
+    CategoryRuleIn,
+    CategoryRuleOut,
+    CategoryUpdate,
+    SplitRequest,
+    TransactionAnnotate,
+    TransactionOut,
+    TransferMatchResult,
+)
 from ..services import categorize
+from ..services.transfers import match_transfers
 
 router = APIRouter(tags=["transactions"], dependencies=[Depends(require_unlocked)])
 
@@ -120,10 +129,13 @@ def export_csv(
     writer = csv.writer(buf, lineterminator="\n")
     writer.writerow(
         ["date", "account", "payee", "description", "amount", "currency", "category",
-         "pending", "memo", "note", "tags"]
+         "pending", "memo", "note", "tags", "split"]
     )
     for t in db.scalars(stmt):
         acct = accounts.get(t.account_id)
+        # Split parents are exported for completeness but marked, so summing the
+        # amount column without excluding them would double-count — flag it.
+        split_marker = "parent" if t.is_split_parent else ("part" if t.parent_id else "")
         writer.writerow(
             [
                 t.posted_at.date().isoformat(),
@@ -137,6 +149,7 @@ def export_csv(
                 _csv_text(t.memo),
                 _csv_text(t.note),
                 t.tags,
+                split_marker,
             ]
         )
 
@@ -183,3 +196,132 @@ def add_rule(body: CategoryRuleIn, db: Session = Depends(get_db)) -> dict:
     db.commit()
     changed = categorize.recategorize_all(db)
     return {"rule_id": rule.id, "transactions_recategorized": changed}
+
+
+@router.get("/rules", response_model=list[CategoryRuleOut])
+def list_rules(db: Session = Depends(get_db)) -> list[CategoryRuleOut]:
+    """All learned/user rules, with how many transactions each one currently decides.
+
+    A transaction is credited to the first matching rule in priority order — the
+    same order categorize uses — so the counts reflect actual effect, not overlap.
+    """
+    rules = list(
+        db.scalars(select(CategoryRule).order_by(CategoryRule.priority.asc(), CategoryRule.id))
+    )
+    counts = {r.id: 0 for r in rules}
+    if rules:
+        for payee, description in db.execute(
+            select(Transaction.payee, Transaction.description)
+        ):
+            combined = f"{(payee or '').lower()} {(description or '').lower()}"
+            for r in rules:
+                if r.pattern.lower() in combined:
+                    counts[r.id] += 1
+                    break
+    return [
+        CategoryRuleOut(
+            id=r.id,
+            pattern=r.pattern,
+            category=r.category,
+            priority=r.priority,
+            created_at=r.created_at,
+            match_count=counts[r.id],
+        )
+        for r in rules
+    ]
+
+
+@router.delete("/rules/{rule_id}")
+def delete_rule(rule_id: int, db: Session = Depends(get_db)) -> dict:
+    rule = db.get(CategoryRule, rule_id)
+    if rule is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rule not found")
+    db.delete(rule)
+    db.commit()
+    # Re-run categorization so the deleted rule's effect actually reverts.
+    changed = categorize.recategorize_all(db)
+    return {"deleted": rule_id, "transactions_recategorized": changed}
+
+
+@router.post("/transfers/match", response_model=TransferMatchResult)
+def match_transfers_now(db: Session = Depends(get_db)) -> TransferMatchResult:
+    """Scan recent history for unlinked internal-transfer pairs (also runs after
+    every sync and import — this is the catch-up button for existing data)."""
+    pairs = match_transfers(db, days=365)
+    db.commit()
+    return TransferMatchResult(pairs_matched=pairs)
+
+
+@router.post("/transactions/{txn_id}/split", response_model=list[TransactionOut])
+def split_transaction(
+    txn_id: int, body: SplitRequest, db: Session = Depends(get_db)
+) -> list[Transaction]:
+    """Split one charge across categories. The original stays in the ledger (flagged,
+    excluded from stats); child rows carry the money. Splitting again replaces the
+    previous parts."""
+    txn = db.get(Transaction, txn_id)
+    if txn is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+    if txn.parent_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="This row is already part of a split — unsplit the original instead.",
+        )
+    if txn.pending:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Pending transactions can change; split after it posts.",
+        )
+    if any((p.amount_minor > 0) != (txn.amount_minor > 0) for p in body.parts):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Every part must have the same direction as the original transaction.",
+        )
+    if sum(p.amount_minor for p in body.parts) != txn.amount_minor:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Parts must add up exactly to the original amount.",
+        )
+
+    # Re-split: discard previous children first.
+    for child in db.scalars(select(Transaction).where(Transaction.parent_id == txn.id)):
+        db.delete(child)
+    db.flush()
+
+    children: list[Transaction] = []
+    for i, part in enumerate(body.parts, start=1):
+        child = Transaction(
+            account_id=txn.account_id,
+            external_id=f"{txn.external_id}::split-{i}",
+            posted_at=txn.posted_at,
+            amount_minor=part.amount_minor,
+            description=txn.description,
+            payee=txn.payee,
+            memo=txn.memo,
+            pending=False,
+            category=part.category,
+            category_source="user",  # a split is a deliberate categorization
+            note=part.note,
+            parent_id=txn.id,
+        )
+        db.add(child)
+        children.append(child)
+    txn.is_split_parent = True
+    db.commit()
+    for child in children:
+        db.refresh(child)
+    db.refresh(txn)
+    return [txn, *children]
+
+
+@router.delete("/transactions/{txn_id}/split", response_model=TransactionOut)
+def unsplit_transaction(txn_id: int, db: Session = Depends(get_db)) -> Transaction:
+    txn = db.get(Transaction, txn_id)
+    if txn is None or not txn.is_split_parent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Split not found")
+    for child in db.scalars(select(Transaction).where(Transaction.parent_id == txn.id)):
+        db.delete(child)
+    txn.is_split_parent = False
+    db.commit()
+    db.refresh(txn)
+    return txn

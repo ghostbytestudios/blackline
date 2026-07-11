@@ -116,6 +116,9 @@ def run_sync(db: Session, lookback_days: int = 90) -> SyncResult:
             db_h.as_of = h.as_of
             holdings_upserted += 1
 
+    from .transfers import match_transfers
+
+    match_transfers(db)
     db.commit()
     from .insights import record_snapshot
     from .portfolio import record_portfolio_snapshot

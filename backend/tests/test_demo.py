@@ -30,6 +30,28 @@ def test_seed_refuses_non_empty_vault(db):
         demo.seed(db)
 
 
+def test_connect_auto_removes_demo_data(db, monkeypatch):
+    """Connecting real accounts must evict the demo household — the two can never mix."""
+    from app.routers import connect as connect_router
+    from app.schemas import SetupTokenRequest
+
+    demo.seed(db)
+    assert demo.has_demo_data(db) is True
+
+    monkeypatch.setattr(
+        connect_router.simplefin, "claim_access_url", lambda token: "https://user:pw@bridge.test/accounts"
+    )
+    monkeypatch.setattr(connect_router.app_lock, "require_key", lambda: b"\x00" * 32)
+    monkeypatch.setattr(connect_router.vault, "put_secret", lambda *a, **k: None)
+    monkeypatch.setattr(connect_router, "build_status", lambda: None)
+
+    connect_router.connect(SetupTokenRequest(setup_token="dGVzdA=="), db=db)
+
+    assert demo.has_demo_data(db) is False
+    assert db.scalar(select(func.count(Transaction.id))) == 0
+    assert db.scalar(select(func.count(Budget.id))) == 0
+
+
 def test_demo_data_feeds_recurring_detection(db):
     demo.seed(db)
     names = {r.name.lower() for r in detect_recurring(db)}

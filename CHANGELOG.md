@@ -5,6 +5,36 @@ All notable changes to Blackline are documented here. The format follows
 [Semantic Versioning](https://semver.org/) (0.x: minor bumps may include
 breaking changes).
 
+## [Unreleased]
+
+### Added
+
+- Transfer matching: the two legs of money moved between your own accounts are
+  auto-linked (same amount, opposite signs, different accounts, within ±2 days)
+  and excluded from income/spending stats; runs after every sync and import,
+  with a catch-up button in Settings.
+- Transaction splitting: divide one charge across categories with an inline
+  editor; the original stays in the ledger but only the parts count in stats.
+- Category rules manager in Settings: view, add, and delete the rules the app
+  learns from your corrections, with live match counts.
+- Take-home income resolution: 50/30/20 and car-cost guidance now grade
+  against real take-home — a manual override, or auto-detected from recurring
+  payroll deposits — instead of a flat 75%-of-gross estimate.
+- "Suggest budgets (50/30/20)" is always visible on Spending and asks for your
+  income inline when it isn't set yet.
+
+### Changed
+
+- Demo data is removed automatically the moment a SimpleFIN connection is made.
+- Recurring detection overhauled: investment-account bookkeeping, income-labeled
+  entries, card credits, and sub-50¢ amounts are never bills; merchant grouping
+  ignores per-charge reference numbers; subscription/utility-labeled charges may
+  vary in amount (usage-based billing); yearly cadences are detectable; streams
+  that miss a full billing cycle stop being projected.
+- Investment contributions ("contribution" in the description) are excluded
+  from income and spending — money moving into your own brokerage/IRA is
+  net-worth-neutral, not a charge.
+
 ## [0.1.0] - 2026-07-09
 
 Initial release: a private, local-first personal finance dashboard. Everything

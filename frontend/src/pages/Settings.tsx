@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowLeftRight,
   CheckCircle2,
   RefreshCw,
   Link2,
@@ -9,12 +10,18 @@ import {
   Download,
   ExternalLink,
   FlaskConical,
+  ListChecks,
+  Trash2,
 } from "lucide-react";
 import {
+  useAddRule,
   useChangePassphrase,
   useConnect,
+  useDeleteRule,
+  useMatchTransfers,
   useProfile,
   useRemoveDemo,
+  useRules,
   useSeedDemo,
   useSetProfile,
   useStatus,
@@ -22,7 +29,7 @@ import {
 } from "../hooks/useApi";
 import { api, ApiError } from "../lib/api";
 import { Card, PageHeader } from "../components/ui";
-import { formatDate } from "../lib/format";
+import { formatDate, formatMoney } from "../lib/format";
 import { useQueryClient } from "@tanstack/react-query";
 
 /** A setup token is base64 of the SimpleFIN claim URL — sniff it so we can auto-fill. */
@@ -206,6 +213,8 @@ export default function Settings() {
         )}
       </Card>
 
+      <RulesCard />
+
       <DemoCard />
 
       <ExportCard />
@@ -224,22 +233,161 @@ export default function Settings() {
   );
 }
 
+const RULE_CATEGORIES = [
+  "groceries", "dining", "transport", "travel", "shopping", "subscriptions",
+  "entertainment", "utilities", "housing", "health", "insurance", "loans",
+  "interest", "income", "transfer", "atm", "fees", "uncategorized",
+];
+
+function RulesCard() {
+  const { data: rules } = useRules();
+  const addRule = useAddRule();
+  const deleteRule = useDeleteRule();
+  const matchTransfers = useMatchTransfers();
+  const [pattern, setPattern] = useState("");
+  const [category, setCategory] = useState("groceries");
+
+  const add = () =>
+    addRule.mutate(
+      { pattern: pattern.trim().toLowerCase(), category },
+      { onSuccess: () => setPattern("") },
+    );
+
+  return (
+    <Card className="mt-5">
+      <div className="flex items-center gap-2 font-semibold text-slate-100">
+        <ListChecks className="h-5 w-5 text-accent-soft" />
+        Category Rules
+      </div>
+      <p className="mt-2 text-sm text-slate-400">
+        Rules assign a category to any transaction whose payee or description contains the
+        pattern. One is learned automatically each time you correct a category; manage them all
+        here. Deleting a rule re-categorizes the transactions it was deciding.
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          value={pattern}
+          onChange={(e) => setPattern(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && pattern.trim() && add()}
+          placeholder='Pattern, e.g. "trader joe"'
+          className="min-w-[14rem] flex-1 rounded-lg border border-ink-700 px-3 py-1.5 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        <span className="text-xs text-slate-500">→</span>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="rounded-lg border border-ink-700 px-3 py-1.5 text-sm"
+        >
+          {RULE_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c[0].toUpperCase() + c.slice(1)}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={add}
+          disabled={!pattern.trim() || addRule.isPending}
+          className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          Add rule
+        </button>
+      </div>
+
+      {(rules ?? []).length > 0 ? (
+        <table className="mt-3 w-full text-sm">
+          <thead className="border-b border-ink-700 text-left text-xs uppercase tracking-wider text-slate-500">
+            <tr>
+              <th className="py-2 pr-3 font-semibold">Pattern</th>
+              <th className="py-2 pr-3 font-semibold">Category</th>
+              <th className="py-2 pr-3 text-right font-semibold">Matches</th>
+              <th className="w-10 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ink-700">
+            {(rules ?? []).map((r) => (
+              <tr key={r.id}>
+                <td className="py-2 pr-3 font-mono text-xs text-slate-300">{r.pattern}</td>
+                <td className="py-2 pr-3 text-slate-400">
+                  {r.category[0].toUpperCase() + r.category.slice(1)}
+                </td>
+                <td className="py-2 pr-3 text-right font-mono text-xs tnum text-slate-400">
+                  {r.match_count}
+                </td>
+                <td className="py-2 text-center">
+                  <button
+                    onClick={() => deleteRule.mutate(r.id)}
+                    disabled={deleteRule.isPending}
+                    title="Delete rule (re-categorizes its transactions)"
+                    className="text-slate-600 hover:text-red-400"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="mt-3 text-sm text-slate-500">
+          No rules yet — correct a category on the Transactions page and one appears here.
+        </p>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-ink-700 pt-3">
+        <button
+          onClick={() => matchTransfers.mutate()}
+          disabled={matchTransfers.isPending}
+          className="flex items-center gap-2 rounded-lg border border-ink-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-ink-700/60 disabled:opacity-50"
+        >
+          <ArrowLeftRight className="h-4 w-4" />
+          {matchTransfers.isPending ? "Scanning…" : "Match internal transfers"}
+        </button>
+        <span className="text-xs text-slate-500">
+          {matchTransfers.data
+            ? `Linked ${matchTransfers.data.pairs_matched} pair${matchTransfers.data.pairs_matched === 1 ? "" : "s"}.`
+            : "Runs automatically after every sync and import — this scans the last year for anything older."}
+        </span>
+      </div>
+    </Card>
+  );
+}
+
 function IncomeCard() {
   const { data: profile } = useProfile();
   const setProfile = useSetProfile();
   const [val, setVal] = useState("");
+  const [netVal, setNetVal] = useState("");
 
   useEffect(() => {
     if (profile && profile.gross_annual_income_minor > 0) {
       setVal(String(profile.gross_annual_income_minor / 100));
     }
+    if (profile?.net_monthly_income_minor) {
+      setNetVal(String(profile.net_monthly_income_minor / 100));
+    }
   }, [profile]);
 
   const save = () => {
-    const dollars = parseFloat(val);
-    if (isNaN(dollars) || dollars < 0) return;
-    setProfile.mutate(Math.round(dollars * 100));
+    const gross = parseFloat(val.replace(/,/g, ""));
+    const net = parseFloat(netVal.replace(/,/g, ""));
+    setProfile.mutate({
+      ...(isNaN(gross) || gross < 0 ? {} : { gross_annual_income_minor: Math.round(gross * 100) }),
+      // Empty field clears the override (falls back to observed/estimated).
+      net_monthly_income_minor:
+        netVal.trim() === "" ? null : isNaN(net) || net <= 0 ? undefined : Math.round(net * 100),
+    });
   };
+
+  const takeHomeHint =
+    profile && profile.take_home_monthly_minor > 0
+      ? {
+          manual: "using your manual take-home",
+          observed: "auto-detected from your recurring deposits",
+          estimated: "estimated as 75% of gross — set take-home or sync payroll for accuracy",
+          none: "",
+        }[profile.take_home_source]
+      : null;
 
   return (
     <Card>
@@ -248,10 +396,11 @@ function IncomeCard() {
         Income
       </div>
       <p className="mt-2 text-sm text-slate-400">
-        Your gross annual income powers budgeting guidance (50/30/20, plus housing, car, and
-        debt-to-income ratios) and the "Suggest budgets" feature.
+        Gross income drives the lender-style guidance (housing, debt-to-income) and "Suggest
+        budgets". Take-home drives the 50/30/20 and car-cost checks — leave it blank and it's
+        detected automatically from your recurring payroll deposits.
       </p>
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-3">
         <div className="relative">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
           <input
@@ -260,10 +409,22 @@ function IncomeCard() {
             onKeyDown={(e) => e.key === "Enter" && save()}
             inputMode="decimal"
             placeholder="75000"
-            className="w-40 rounded-lg border border-ink-700 py-2 pl-5 pr-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-36 rounded-lg border border-ink-700 py-2 pl-5 pr-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
-        <span className="text-sm text-slate-500">/ year (gross)</span>
+        <span className="mr-3 text-sm text-slate-500">/ year (gross)</span>
+        <div className="relative">
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
+          <input
+            value={netVal}
+            onChange={(e) => setNetVal(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && save()}
+            inputMode="decimal"
+            placeholder="auto"
+            className="w-28 rounded-lg border border-ink-700 py-2 pl-5 pr-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+        </div>
+        <span className="text-sm text-slate-500">/ month (take-home, optional)</span>
         <button
           onClick={save}
           disabled={setProfile.isPending}
@@ -273,6 +434,15 @@ function IncomeCard() {
         </button>
         {setProfile.isSuccess && <span className="text-sm text-emerald-400">Saved.</span>}
       </div>
+      {takeHomeHint && (
+        <p className="mt-2 text-xs text-slate-500">
+          Take-home in use:{" "}
+          <span className="font-mono tnum text-slate-400">
+            {formatMoney(profile!.take_home_monthly_minor)}/mo
+          </span>{" "}
+          — {takeHomeHint}.
+        </p>
+      )}
     </Card>
   );
 }
@@ -312,8 +482,9 @@ function DemoCard() {
       {status.demo_data ? (
         <div className="mt-2">
           <p className="text-sm text-slate-400">
-            Demo data is loaded — a fictional six-month household. Remove it before
-            connecting your real accounts.
+            Demo data is loaded — a fictional six-month household. It's removed
+            automatically the moment you connect your real accounts, or remove it
+            now.
           </p>
           <button
             onClick={() => remove.mutate()}

@@ -12,6 +12,7 @@ from ..integrations import simplefin
 from ..schemas import SetupTokenRequest, StatusResponse, SyncResult
 from ..security import vault
 from ..security.lock import app_lock
+from ..services import demo as demo_service
 from ..services import sync as sync_service
 from .auth import build_status
 
@@ -29,6 +30,16 @@ def connect(body: SetupTokenRequest, db: Session = Depends(get_db)) -> StatusRes
 
     key = app_lock.require_key()
     vault.put_secret(db, key, vault.SIMPLEFIN_ACCESS_URL, access_url.encode("utf-8"))
+    # A vault never holds demo and real data at once (the seeder only fills empty
+    # vaults), so connecting real accounts evicts the demo household automatically.
+    if demo_service.has_demo_data(db):
+        removed = demo_service.remove(db)
+        audit.record(
+            db,
+            "demo_removed",
+            detail=f"auto-removed on connect: {removed['accounts_removed']} accounts",
+            success=True,
+        )
     audit.record(db, "connect", detail="access url stored", success=True)
     return build_status()
 

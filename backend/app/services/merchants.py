@@ -24,7 +24,11 @@ def merchant_summaries(db: Session, days: int = 365, min_txns: int = 2) -> list[
 
     groups: dict[str, list[tuple[Transaction, int]]] = defaultdict(list)
     for t in db.scalars(
-        select(Transaction).where(Transaction.posted_at >= start, Transaction.pending.is_(False))
+        select(Transaction).where(
+            Transaction.posted_at >= start,
+            Transaction.pending.is_(False),
+            Transaction.is_split_parent.is_(False),
+        )
     ):
         _, outflow = classify(
             t.amount_minor, account_type.get(t.account_id, "depository"), t.category

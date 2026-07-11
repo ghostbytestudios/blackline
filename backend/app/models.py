@@ -97,6 +97,14 @@ class Transaction(Base):
     category_source: Mapped[str] = mapped_column(String(16), default="auto")  # auto|user
     note: Mapped[str | None] = mapped_column(Text)  # user-written annotation
     tags: Mapped[str] = mapped_column(Text, default="")  # comma-separated lowercase tags
+    # Matched internal transfer: id of the opposite leg (same amount, opposite sign,
+    # different account). Plain int, not FK — legs are matched heuristically and
+    # unlinked freely; integrity is managed in services/transfers.py.
+    transfer_peer_id: Mapped[int | None] = mapped_column(Integer)
+    # Splitting: a split parent stays in the ledger for display/audit but is excluded
+    # from every aggregation; its children (parent_id set) carry the money.
+    parent_id: Mapped[int | None] = mapped_column(Integer)
+    is_split_parent: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     account: Mapped["Account"] = relationship(back_populates="transactions")
@@ -166,6 +174,9 @@ class Profile(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     gross_annual_income_minor: Mapped[int] = mapped_column(BigInteger, default=0)
+    # Optional manual take-home override. When unset, take-home is derived from
+    # observed recurring payroll deposits, falling back to an estimate from gross.
+    net_monthly_income_minor: Mapped[int | None] = mapped_column(BigInteger)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )

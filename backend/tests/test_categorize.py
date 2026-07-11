@@ -31,6 +31,17 @@ class TestStructuralPatterns:
     def test_atm_withdrawal(self):
         assert cat(None, "ATM WITHDRAWAL #4821") == "atm"
 
+    def test_investment_contribution_is_transfer(self):
+        # Brokerage/IRA deposits — excluded from both income and spending,
+        # whatever sign the provider reports them with.
+        assert cat(None, "Contribution", amount_minor=-50_000, account_type="investment") == "transfer"
+        assert cat("Vanguard", "ROTH IRA CONTRIBUTION") == "transfer"
+
+    def test_user_rule_beats_contribution_pattern(self):
+        # A donation the user has claimed with a rule stays a donation.
+        rule = CategoryRule(pattern="red cross", category="shopping", priority=10)
+        assert cat("Red Cross", "CHARITABLE CONTRIBUTION - RED CROSS", rules=[rule]) == "shopping"
+
 
 class TestMerchantKeywords:
     def test_starbucks_is_dining(self):

@@ -36,6 +36,11 @@ STRUCTURAL: list[tuple[str, str]] = [
     ("ach transfer", "transfer"),
     ("loan payment", "transfer"),
     ("principal", "transfer"),  # loan principal: cash down + debt down = net-worth neutral
+    # Investment contributions: money into your own brokerage/IRA (cash -> securities,
+    # net-worth neutral) — the debit is not spending and the receiving credit is not
+    # income. Charity donations usually carry the org's name, which a user rule (tier 1)
+    # can claim before this fires.
+    ("contribution", "transfer"),
     # --- Interest: what the bank pays YOU is income; what YOU pay on a loan is an expense.
     ("interest paid", "income"),  # savings/checking interest credited to you
     ("interest", "interest"),  # loan interest you pay (counts as spending via account type)
@@ -208,7 +213,13 @@ def recategorize_all(db: Session) -> int:
     rules = _load_rules(db)
     account_type = {a.id: a.account_type for a in db.scalars(select(Account))}
     changed = 0
-    for txn in db.scalars(select(Transaction).where(Transaction.category_source == "auto")):
+    # Matched transfer legs keep "transfer" — a keyword rule must not undo a match.
+    for txn in db.scalars(
+        select(Transaction).where(
+            Transaction.category_source == "auto",
+            Transaction.transfer_peer_id.is_(None),
+        )
+    ):
         new_cat = categorize_text(
             txn.payee,
             txn.description,

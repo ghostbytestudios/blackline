@@ -64,18 +64,20 @@ login — to a company's cloud. Blackline takes the opposite approach:
   budgets on track, a savings-rate health tile, recent activity, and income-vs-spending
   history — all on one screen.
 - **Demo mode** — one click loads a realistic six-month fictional household so you can
-  try everything before connecting a bank (and one click removes it).
+  try everything before connecting a bank; it's removed automatically the moment you
+  connect your real accounts.
 - **Accounts** — label each account (checking, savings, investment, credit, loan…) and set savings goals with progress bars.
-- **Transactions** — automatically categorized (correct one and Blackline *learns a rule*), full-text search, and personal notes + tags on any charge.
+- **Transactions** — automatically categorized (correct one and Blackline *learns a rule* — all rules manageable in Settings), full-text search, personal notes + tags, and **splitting** one charge across categories.
+- **Transfer matching** — the two sides of money moved between your own accounts are auto-linked and excluded from income/spending stats, even when the bank labels them cryptically.
 - **Statement import** — bring in CSV/OFX/QFX exports from any bank: auto-detected column mapping, duplicate detection against synced data, and manual accounts for banks you don't link.
 - **Spending & budgets** — category breakdowns, income-vs-spending trends, inline-editable monthly budgets with optional month-to-month rollover, and a six-month budget history grid (plus one-click "suggest from income" using 50/30/20).
 - **Merchants** — where the money actually goes: per-merchant totals and monthly averages over 90 days to a year.
 - **Goals** — multi-account savings goals with deadlines, required-per-month math, and on-track/behind status.
 - **Investments** — holdings, allocation, per-holding gain/loss, and portfolio value history vs. cost basis.
-- **Recurring & upcoming bills** — auto-detects fixed-price subscriptions, bills, and loan payments (ignoring variable retail spending) and projects what's due in the next two weeks.
+- **Recurring & upcoming bills** — auto-detects subscriptions, bills, and loan payments on weekly-to-yearly cadences (including usage-based subscriptions and utilities that vary month to month) while ignoring variable retail spending and brokerage bookkeeping noise; projects what's due in the next two weeks and drops streams that look canceled.
 - **Cash-flow forecast** — a 30-day projection of your liquid balance from detected bills, income, and average day-to-day spending.
 - **Net worth** — historical net-worth tracking that accumulates with each sync.
-- **Insights** — flags spending spikes, budget overruns, idle high-yield-eligible cash, and budgeting-ratio guidance (housing, transport, debt-to-income, 50/30/20).
+- **Insights** — flags spending spikes, budget overruns, idle high-yield-eligible cash, and budgeting-ratio guidance: lender-style rules (housing, debt-to-income) graded against gross income, and 50/30/20 + car-cost rules graded against your real take-home — detected automatically from your payroll deposits (or set manually).
 - **CSV export** — download your transactions (optionally date-filtered) for spreadsheets or taxes.
 - **Guided tutorial** — an in-app walkthrough that opens on first run and is reopenable anytime via the **?** button.
 
@@ -243,15 +245,15 @@ token needed.
 |---|---|
 | **Dashboard** | Spending pace vs. last month, spent today/yesterday/MTD, net worth, income, recurring total, budget status, savings-rate health, recent activity. |
 | **Accounts** | Set each account's role (checking/savings/investment/credit/loan) and savings goals. Roles drive correct cash-flow and insight calculations. |
-| **Transactions** | Search, review, re-categorize, and annotate with notes/tags. Editing a category creates a learned rule applied to all similar charges. The **Import** button takes CSV/OFX/QFX statement files. |
-| **Spending** | Category pie, income-vs-spending bars, inline-editable **Monthly Budgets** (with optional rollover), and a six-month budget history grid. Add your income in Settings to unlock "Suggest from income". |
+| **Transactions** | Search, review, re-categorize, annotate with notes/tags, and split one charge across categories. Editing a category creates a learned rule applied to all similar charges. Matched internal transfers get a ⇄ chip. The **Import** button takes CSV/OFX/QFX statement files. |
+| **Spending** | Category pie, income-vs-spending bars, inline-editable **Monthly Budgets** (with optional rollover), and a six-month budget history grid. **Suggest budgets (50/30/20)** builds a starter budget from your income — it asks for it right there if you haven't set it. |
 | **Merchants** | Per-merchant spending totals and monthly averages; click through to that merchant's transactions. |
 | **Goals** | Savings goals funded by one or more accounts, with deadlines and on-track status. |
 | **Investments** | Holdings table, allocation, gain/loss, and value history. (Cost basis/gains appear only if your provider supplies them.) |
 | **Recurring** | Detected subscriptions and recurring charges, plus bills due in the next 14 days. |
 | **Net Worth** | Historical net worth once a few snapshots exist (otherwise a labeled estimate), plus a 30-day cash forecast. |
 | **Insights** | Severity-grouped cards: spikes, budget overruns, idle cash, and budgeting-ratio guidance. |
-| **Settings** | Connect/disconnect SimpleFIN, demo mode, CSV export, set income, change passphrase. |
+| **Settings** | Connect/disconnect SimpleFIN, category rules manager, transfer matching, demo mode, CSV export, gross + take-home income, change passphrase. |
 
 **Locking:** Click **Lock Vault** in the sidebar whenever you step away — or just walk
 away: the vault auto-locks after 15 idle minutes. Either way, the decryption key is
@@ -315,18 +317,23 @@ blackline/
 │   │   ├── schemas.py       Pydantic API contracts
 │   │   ├── security/        crypto, key derivation, secret vault, app lock, throttle
 │   │   ├── integrations/    SimpleFIN Bridge client (the only network egress)
-│   │   ├── services/        sync, categorization, insights, dashboard, recurring, demo
+│   │   ├── services/        sync, categorize, insights, dashboard, recurring, forecast,
+│   │   │                    budgets, merchants, transfers, importer, demo, …
 │   │   ├── routers/         HTTP API endpoints
 │   │   └── main.py          App wiring, 127.0.0.1 bind, security headers, auto-lock
 │   ├── migrations/          Alembic migration scripts (see migrations/README.md)
-│   ├── tests/               pytest suite (~80 tests)
+│   ├── tests/               pytest suite (160+ tests)
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/                React + Vite + Tailwind dashboard (dark theme)
 │   └── src/{pages,components,hooks,lib}
 ├── docs/                    Screenshots
+├── .github/workflows/       CI (backend tests + frontend build on every push/PR)
+├── start.ps1 / start.sh     One-command bootstrap + launch
 ├── README.md
-├── SECURITY.md              Threat model & controls
+├── CHANGELOG.md
+├── CONTRIBUTING.md          Dev setup & design principles
+├── SECURITY.md              Threat model & vulnerability reporting
 └── LICENSE                  GNU GPL v3
 ```
 

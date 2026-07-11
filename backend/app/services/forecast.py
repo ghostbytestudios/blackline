@@ -58,6 +58,7 @@ def build_forecast(db: Session, days: int = 30) -> ForecastSummary:
             Transaction.posted_at >= window_start,
             Transaction.pending.is_(False),
             Transaction.amount_minor < 0,
+            Transaction.is_split_parent.is_(False),
         )
     ):
         if t.account_id in liquid_ids and _merchant_key(t) not in recurring_keys:

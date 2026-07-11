@@ -36,6 +36,18 @@ export interface Transaction {
   category_source: "auto" | "user";
   note: string | null;
   tags: string[];
+  transfer_peer_id: number | null;
+  parent_id: number | null;
+  is_split_parent: boolean;
+}
+
+export interface CategoryRule {
+  id: number;
+  pattern: string;
+  category: string;
+  priority: number;
+  created_at: string;
+  match_count: number;
 }
 
 export interface MerchantSummary {
@@ -63,6 +75,9 @@ export interface MonthlyTrend {
 
 export interface Profile {
   gross_annual_income_minor: number;
+  net_monthly_income_minor: number | null;
+  take_home_monthly_minor: number;
+  take_home_source: "manual" | "observed" | "estimated" | "none";
 }
 
 export interface BudgetStatus {

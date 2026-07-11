@@ -37,7 +37,11 @@ def monthly_category_spend(db: Session, months: int) -> dict[tuple[str, str], in
     account_type = effective_account_types(db)
     out: dict[tuple[str, str], int] = defaultdict(int)
     for t in db.scalars(
-        select(Transaction).where(Transaction.posted_at >= start, Transaction.pending.is_(False))
+        select(Transaction).where(
+            Transaction.posted_at >= start,
+            Transaction.pending.is_(False),
+            Transaction.is_split_parent.is_(False),
+        )
     ):
         _, outflow = classify(t.amount_minor, account_type.get(t.account_id, "depository"), t.category)
         if outflow > 0:

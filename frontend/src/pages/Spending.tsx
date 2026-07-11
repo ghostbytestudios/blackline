@@ -19,6 +19,7 @@ import {
   useInsights,
   useProfile,
   useSetBudget,
+  useSetProfile,
   useSuggestBudgets,
 } from "../hooks/useApi";
 import { Card, EmptyState, Loading, PageHeader } from "../components/ui";
@@ -185,11 +186,25 @@ function Budgets() {
   const { data: budgets } = useBudgets();
   const { data: profile } = useProfile();
   const setBudget = useSetBudget();
+  const setProfile = useSetProfile();
   const suggest = useSuggestBudgets();
   const [newCat, setNewCat] = useState("groceries");
   const [newAmt, setNewAmt] = useState("");
+  const [showIncomePrompt, setShowIncomePrompt] = useState(false);
+  const [incomeInput, setIncomeInput] = useState("");
 
   const hasIncome = (profile?.gross_annual_income_minor ?? 0) > 0;
+
+  const saveIncomeAndSuggest = () => {
+    const dollars = parseFloat(incomeInput.replace(/,/g, ""));
+    if (isNaN(dollars) || dollars <= 0) return;
+    setProfile.mutate({ gross_annual_income_minor: Math.round(dollars * 100) }, {
+      onSuccess: () => {
+        setShowIncomePrompt(false);
+        suggest.mutate();
+      },
+    });
+  };
   const rows = budgets ?? [];
   const used = new Set(rows.map((b) => b.category));
   const available = BUDGET_CATEGORIES.filter((c) => !used.has(c));
@@ -205,18 +220,41 @@ function Budgets() {
     <Card>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-semibold text-slate-100">Monthly Budgets</h2>
-        {hasIncome && (
-          <button
-            onClick={() => suggest.mutate()}
-            disabled={suggest.isPending}
-            className="flex items-center gap-1.5 rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-blue-500/10 disabled:opacity-50"
-            title="Fill in recommended budgets from your income (won't overwrite existing)"
-          >
-            <Sparkles className="h-4 w-4" />
-            {suggest.isPending ? "Suggesting…" : "Suggest from income"}
-          </button>
-        )}
+        <button
+          onClick={() => (hasIncome ? suggest.mutate() : setShowIncomePrompt((s) => !s))}
+          disabled={suggest.isPending}
+          className="flex items-center gap-1.5 rounded-lg border border-accent px-3 py-1.5 text-sm font-medium text-accent hover:bg-blue-500/10 disabled:opacity-50"
+          title="Fill in a starter budget from your income using the 50/30/20 guideline (won't overwrite budgets you've set)"
+        >
+          <Sparkles className="h-4 w-4" />
+          {suggest.isPending ? "Suggesting…" : "Suggest budgets (50/30/20)"}
+        </button>
       </div>
+      {showIncomePrompt && !hasIncome && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-ink-700 p-3">
+          <span className="text-sm text-slate-400">
+            Suggestions are based on your gross income — enter it once:
+          </span>
+          <span className="text-xs text-slate-500">$</span>
+          <input
+            value={incomeInput}
+            onChange={(e) => setIncomeInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveIncomeAndSuggest()}
+            placeholder="95000"
+            inputMode="decimal"
+            autoFocus
+            className="w-28 rounded-lg border border-ink-700 px-3 py-1.5 text-right font-mono text-sm tnum focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          <span className="text-xs text-slate-500">/ year</span>
+          <button
+            onClick={saveIncomeAndSuggest}
+            disabled={setProfile.isPending || suggest.isPending}
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            Create budgets
+          </button>
+        </div>
+      )}
       {rows.length === 0 ? (
         <p className="mb-4 text-sm text-slate-500">
           No budgets yet. Add one below to get over-budget alerts in Insights.

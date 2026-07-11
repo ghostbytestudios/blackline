@@ -480,6 +480,12 @@ def commit_import(
         existing_ids.add(external_id)
         inserted += 1
 
+    if inserted:
+        # New rows may be the missing leg of an internal transfer.
+        from .transfers import match_transfers
+
+        db.flush()
+        match_transfers(db)
     db.commit()
     return ImportResult(
         total_rows=len(parsed.rows),

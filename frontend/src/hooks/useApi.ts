@@ -4,6 +4,7 @@ import type {
   Account,
   BudgetHistory,
   BudgetStatus,
+  CategoryRule,
   DashboardSummary,
   ForecastSummary,
   Goal,
@@ -291,12 +292,66 @@ export function useProfile() {
 export function useSetProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (gross_annual_income_minor: number) =>
-      api.put<Profile>("/profile", { gross_annual_income_minor }),
+    // Partial update; net_monthly_income_minor: null clears the manual override.
+    mutationFn: (b: {
+      gross_annual_income_minor?: number;
+      net_monthly_income_minor?: number | null;
+    }) => api.put<Profile>("/profile", b),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["insight-cards"] });
     },
+  });
+}
+
+export function useRules() {
+  return useQuery({ queryKey: ["rules"], queryFn: () => api.get<CategoryRule[]>("/rules") });
+}
+
+export function useAddRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: { pattern: string; category: string; priority?: number }) =>
+      api.post<{ rule_id: number }>("/rules", b),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useDeleteRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del<{ deleted: number }>(`/rules/${id}`),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useMatchTransfers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ pairs_matched: number }>("/transfers/match"),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useSplitTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      parts,
+    }: {
+      id: number;
+      parts: { category: string; amount_minor: number; note?: string | null }[];
+    }) => api.post<Transaction[]>(`/transactions/${id}/split`, { parts }),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useUnsplitTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del<Transaction>(`/transactions/${id}/split`),
+    onSuccess: () => qc.invalidateQueries(),
   });
 }
 
