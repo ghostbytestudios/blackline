@@ -295,7 +295,7 @@ file), prefixed with `BLACKLINE_`. The defaults are secure for local use.
 | `BLACKLINE_HOST` | `127.0.0.1` | Bind address. **Must stay localhost** — the app refuses to start otherwise. |
 | `BLACKLINE_PORT` | `8000` | Backend port. |
 | `BLACKLINE_FRONTEND_ORIGIN` | `http://127.0.0.1:5173` | Allowed CORS origin. |
-| `BLACKLINE_SIMPLEFIN_ALLOWED_HOST` | `bridge.simplefin.org` | The only permitted outbound host. |
+| `BLACKLINE_SIMPLEFIN_ALLOWED_HOST` | `bridge.simplefin.org,beta-bridge.simplefin.org` | Comma-separated exact hostnames the app may ever talk to (add your own for a self-hosted bridge). |
 | `BLACKLINE_ARGON2_TIME_COST` | `3` | Argon2id iterations. |
 | `BLACKLINE_ARGON2_MEMORY_KIB` | `262144` | Argon2id memory (256 MiB). |
 | `BLACKLINE_ARGON2_PARALLELISM` | `4` | Argon2id lanes. |

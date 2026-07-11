@@ -32,7 +32,9 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://127.0.0.1:5173"
 
     # --- Outbound egress allowlist ---
-    simplefin_allowed_host: str = "bridge.simplefin.org"
+    # Comma-separated exact hostnames the app may ever talk to. Both official
+    # SimpleFIN bridge hosts by default; self-hosters add their own.
+    simplefin_allowed_host: str = "bridge.simplefin.org,beta-bridge.simplefin.org"
 
     # --- Argon2id key-derivation parameters ---
     argon2_time_cost: int = 3

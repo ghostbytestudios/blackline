@@ -296,7 +296,30 @@ def _rows_from_csv(
 # OFX / QFX
 
 
-_STMTTRN_RE = re.compile(r"<STMTTRN>(.*?)(?=</STMTTRN>|<STMTTRN>|</BANKTRANLIST>|\Z)", re.S | re.I)
+def _stmttrn_blocks(text: str) -> list[str]:
+    """Linear scan for <STMTTRN> blocks — no backtracking regex over untrusted
+    file content (a crafted file could make one run polynomially slow). SGML OFX
+    often omits </STMTTRN>, so a block ends at the next opening tag, a closing
+    tag, </BANKTRANLIST>, or end of file, whichever comes first."""
+    upper = text.upper()
+    open_tag = "<STMTTRN>"
+    blocks: list[str] = []
+    pos = upper.find(open_tag)
+    while pos != -1:
+        start = pos + len(open_tag)
+        next_open = upper.find(open_tag, start)
+        ends = [
+            e
+            for e in (
+                upper.find("</STMTTRN>", start),
+                upper.find("</BANKTRANLIST>", start),
+                next_open,
+            )
+            if e != -1
+        ]
+        blocks.append(text[start : min(ends) if ends else len(text)])
+        pos = next_open
+    return blocks
 
 
 def _ofx_field(block: str, tag: str) -> str | None:
@@ -322,8 +345,7 @@ def _ofx_date(raw: str | None) -> date | None:
 
 def _parse_ofx(text: str) -> ParsedFile:
     parsed = ParsedFile(kind="ofx", currency=_ofx_field(text, "CURDEF"))
-    for i, match in enumerate(_STMTTRN_RE.finditer(text), start=1):
-        block = match.group(1)
+    for i, block in enumerate(_stmttrn_blocks(text), start=1):
         posted = _ofx_date(_ofx_field(block, "DTPOSTED"))
         amount = parse_amount_minor(_ofx_field(block, "TRNAMT") or "")
         if posted is None or amount is None:

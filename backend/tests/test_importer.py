@@ -128,6 +128,20 @@ def test_preview_empty_file_raises():
 # --- OFX parsing --------------------------------------------------------------
 
 
+def test_ofx_hostile_input_parses_fast():
+    """CodeQL #4 regression: block extraction must stay linear on malformed
+    files — an open tag followed by megabytes of junk and no terminator."""
+    import time
+
+    hostile = "OFXHEADER:100\n<OFX><BANKTRANLIST><STMTTRN>\n" + "a" * 2_000_000
+    start = time.perf_counter()
+    parsed = importer._parse_ofx(hostile)
+    assert time.perf_counter() - start < 2.0
+    # One block found (unterminated -> runs to EOF), unparseable -> warning.
+    assert parsed.rows == []
+    assert len(parsed.warnings) == 1
+
+
 def test_ofx_rows_parsed():
     parsed = importer.parse_file("s.ofx", OFX_SGML, None)
     assert [r.fitid for r in parsed.rows] == ["F-001", "F-002"]

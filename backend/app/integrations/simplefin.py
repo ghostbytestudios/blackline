@@ -19,7 +19,7 @@ import binascii
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
@@ -76,10 +76,11 @@ class SyncPayload:
 
 
 # --- Helpers ---
-def _allowed_base_domain() -> str:
-    host = get_settings().simplefin_allowed_host
-    labels = host.split(".")
-    return ".".join(labels[-2:]) if len(labels) >= 2 else host
+def _allowed_hosts() -> set[str]:
+    """Exact-match egress allowlist (comma-separated in config). No wildcarding:
+    an unexpected subdomain is refused until the user explicitly allows it."""
+    raw = get_settings().simplefin_allowed_host
+    return {h.strip().lower() for h in raw.split(",") if h.strip()}
 
 
 def _validate_host(url: str) -> None:
@@ -87,11 +88,22 @@ def _validate_host(url: str) -> None:
     if parts.scheme != "https":
         raise SimpleFINError("refusing non-HTTPS SimpleFIN URL")
     host = (parts.hostname or "").lower()
-    base = _allowed_base_domain().lower()
-    if not (host == base or host.endswith("." + base)):
+    if host not in _allowed_hosts():
         raise SimpleFINError(
-            f"SimpleFIN host {host!r} is outside the allowlist ({base!r}); refusing egress"
+            f"SimpleFIN host {host!r} is outside the allowlist; refusing egress. "
+            "Self-hosting a bridge? Add its host to BLACKLINE_SIMPLEFIN_ALLOWED_HOST."
         )
+
+
+def _rebuild_for_request(url: str) -> str:
+    """Validate, then reconstruct the URL from its parsed components so the request
+    target can only contain the validated host — a raw string could smuggle
+    `user@evil.com` userinfo or a fragment past a naive substring check."""
+    _validate_host(url)
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    netloc = host if parts.port is None else f"{host}:{parts.port}"
+    return urlunsplit(("https", netloc, parts.path, parts.query, ""))
 
 
 def _to_minor(amount: str | int | float | None, currency: str = "USD") -> int | None:
@@ -131,9 +143,13 @@ def decode_setup_token(setup_token: str) -> str:
 
 def claim_access_url(setup_token: str) -> str:
     """Exchange a one-time Setup Token for a durable Access URL. Network call."""
-    claim_url = decode_setup_token(setup_token)
+    claim_url = _rebuild_for_request(decode_setup_token(setup_token))
     try:
-        resp = httpx.post(claim_url, timeout=_TIMEOUT)
+        # Redirects stay off (also httpx's default) so the validated host is the
+        # only place this request can ever land.
+        resp = httpx.post(claim_url, timeout=_TIMEOUT, follow_redirects=False)
+        if resp.is_redirect:
+            raise SimpleFINError("SimpleFIN claim endpoint tried to redirect; refusing")
         resp.raise_for_status()
     except httpx.HTTPError as exc:
         raise SimpleFINError("failed to claim SimpleFIN access URL") from exc
@@ -159,7 +175,11 @@ def fetch_accounts(access_url: str, start_date: datetime | None = None) -> SyncP
         params["start-date"] = str(int(start_date.timestamp()))
 
     try:
-        resp = httpx.get(endpoint, params=params, auth=auth, timeout=_TIMEOUT)
+        resp = httpx.get(
+            endpoint, params=params, auth=auth, timeout=_TIMEOUT, follow_redirects=False
+        )
+        if resp.is_redirect:
+            raise SimpleFINError("SimpleFIN endpoint tried to redirect; refusing")
         resp.raise_for_status()
         data = resp.json()
     except httpx.HTTPError as exc:
