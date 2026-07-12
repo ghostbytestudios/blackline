@@ -25,7 +25,9 @@ def preview_import(body: ImportPreviewRequest) -> ImportPreview:
     try:
         return importer.build_preview(body.filename, body.content)
     except importer.ImportError_ as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
 
 @router.post("/import/commit", response_model=ImportResult)
@@ -39,7 +41,9 @@ def commit_import(body: ImportCommitRequest, db: Session = Depends(get_db)) -> I
             db, account, parsed, skip_duplicates=body.skip_duplicates
         )
     except importer.ImportError_ as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
     audit.record(
         db,
         "import",

@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import math
 
-from fastapi import APIRouter, Depends, HTTPException, status as http_status
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import status as http_status
 from sqlalchemy import func, select
 
 from .. import audit
 from ..db import read_scope
-from ..models import Account, AuditLog
 from ..deps import require_unlocked
+from ..models import Account, AuditLog
 from ..schemas import ChangePassphraseRequest, ResetVaultRequest, StatusResponse, UnlockRequest
 from ..security import vault
 from ..security.lock import app_lock, unlock_throttle

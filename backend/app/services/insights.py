@@ -15,7 +15,7 @@ Classification rules (see `classify`):
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -103,8 +103,8 @@ def effective_account_types(db: Session) -> dict[int, str]:
 
 def current_month_category_spend(db: Session) -> dict[str, int]:
     """Outflow per category for the current calendar month (user cash-flow view)."""
-    now = datetime.now(timezone.utc)
-    start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    now = datetime.now(UTC)
+    start = datetime(now.year, now.month, 1, tzinfo=UTC)
     account_type = effective_account_types(db)
     out: dict[str, int] = defaultdict(int)
     for t in db.scalars(
@@ -124,7 +124,7 @@ def record_snapshot(db: Session) -> None:
     """Upsert today's net-worth snapshot from current balances (role-aware). Idempotent."""
     from ..models import NetWorthSnapshot
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     eff = effective_account_types(db)
     accounts = [a for a in db.scalars(select(Account)) if a.is_active]
     assets = sum(a.balance_minor for a in accounts if eff.get(a.id) not in LIABILITY_TYPES)
@@ -149,7 +149,7 @@ def _net_worth_minor(db: Session) -> int:
 
 
 def build_summary(db: Session, days: int = 90) -> InsightsSummary:
-    end = datetime.now(timezone.utc)
+    end = datetime.now(UTC)
     start = end - timedelta(days=days)
 
     account_type = effective_account_types(db)
@@ -226,7 +226,7 @@ def build_insight_cards(db: Session, days: int = 180) -> list[InsightCard]:
     Every card is derived from the user's own transactions/balances — nothing is
     fabricated. Insights compare the current calendar month against prior months.
     """
-    end = datetime.now(timezone.utc)
+    end = datetime.now(UTC)
     start = end - timedelta(days=days)
     account_type = effective_account_types(db)
     rows = list(

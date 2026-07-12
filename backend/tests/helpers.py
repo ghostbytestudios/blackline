@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -43,7 +43,7 @@ def make_txn(
     txn = Transaction(
         account_id=account.id,
         external_id=f"test-txn-{next(_ID_COUNTER)}",
-        posted_at=datetime.now(timezone.utc) - timedelta(days=days_ago),
+        posted_at=datetime.now(UTC) - timedelta(days=days_ago),
         amount_minor=amount_minor,
         payee=payee,
         description=description,

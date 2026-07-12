@@ -261,12 +261,14 @@ export default function Transactions() {
   const total = all.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Reset to the first page whenever the filters change.
-  useEffect(() => setPage(1), [accountId, q]);
-  // Keep the page in range if the underlying list shrinks (e.g. after re-categorizing).
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  // Render-time state adjustments (no effects): snap back to page 1 when the
+  // filters change, and keep the page in range if the list shrinks.
+  const [prevFilter, setPrevFilter] = useState({ accountId, q });
+  if (prevFilter.accountId !== accountId || prevFilter.q !== q) {
+    setPrevFilter({ accountId, q });
+    setPage(1);
+  }
+  if (page > totalPages) setPage(totalPages);
 
   const startIdx = (page - 1) * PAGE_SIZE;
   const rows = all.slice(startIdx, startIdx + PAGE_SIZE);

@@ -6,7 +6,7 @@ holdings by (account_id, external_id). Re-running a sync never duplicates rows.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -35,7 +35,7 @@ def run_sync(db: Session, lookback_days: int = 90) -> SyncResult:
     # Snapshot the pre-sync blob so a disk fault can lose at most the syncs since
     # the newest backup.
     secure_db.rotate_backup()
-    start = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    start = datetime.now(UTC) - timedelta(days=lookback_days)
 
     try:
         payload = simplefin.fetch_accounts(access_url, start_date=start)

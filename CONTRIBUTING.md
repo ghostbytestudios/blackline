@@ -28,10 +28,12 @@ bank connection to develop.
 
 ## Running the checks
 
-Both of these must pass before a PR merges (CI runs them on every push):
+All of these must pass before a PR merges (CI runs them on every push):
 
 ```bash
+cd backend && python -m ruff check . # backend lint
 cd backend && python -m pytest       # backend test suite
+cd frontend && npm run lint          # eslint (typescript + react-hooks rules)
 cd frontend && npm run build         # TypeScript check + production build
 ```
 

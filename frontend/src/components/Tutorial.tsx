@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShieldCheck,
@@ -84,14 +84,13 @@ const STEPS: Step[] = [
 ];
 
 export default function Tutorial() {
-  const [open, setOpen] = useState(false);
+  // Open on first run (lazy initializer — VITE_SKIP_TUTORIAL keeps automated
+  // test/screenshot runs deterministic).
+  const [open, setOpen] = useState(
+    () => !localStorage.getItem(STORAGE_KEY) && !import.meta.env.VITE_SKIP_TUTORIAL,
+  );
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // VITE_SKIP_TUTORIAL keeps automated test/screenshot runs deterministic.
-    if (!localStorage.getItem(STORAGE_KEY) && !import.meta.env.VITE_SKIP_TUTORIAL) setOpen(true);
-  }, []);
 
   const markSeen = () => localStorage.setItem(STORAGE_KEY, "1");
   const close = () => {

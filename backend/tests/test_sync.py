@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -12,7 +12,7 @@ from app.services import sync as sync_service
 
 
 def _payload(*, pending=False, balance=123_456) -> SyncPayload:
-    when = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    when = datetime(2026, 7, 1, tzinfo=UTC)
     return SyncPayload(
         accounts=[
             NormAccount(

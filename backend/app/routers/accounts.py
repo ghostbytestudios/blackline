@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from uuid import uuid4
 
 from ..db import get_db
 from ..deps import require_unlocked

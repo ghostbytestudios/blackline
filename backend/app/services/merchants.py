@@ -7,7 +7,7 @@ rolling window. Transfers/ATM are excluded via the user-perspective classifier.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ from .recurring import _merchant_key
 
 
 def merchant_summaries(db: Session, days: int = 365, min_txns: int = 2) -> list[MerchantSummary]:
-    start = datetime.now(timezone.utc) - timedelta(days=days)
+    start = datetime.now(UTC) - timedelta(days=days)
     account_type = effective_account_types(db)
 
     groups: dict[str, list[tuple[Transaction, int]]] = defaultdict(list)

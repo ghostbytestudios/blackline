@@ -1,0 +1,38 @@
+name: Release
+
+# Pushing a version tag (v0.2.0) drafts a GitHub Release whose notes are that
+# version's CHANGELOG section. Publish happens manually after review.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write  # create the release
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract this version's CHANGELOG section
+        run: |
+          python - "$GITHUB_REF_NAME" <<'EOF'
+          import re, sys
+
+          version = sys.argv[1].lstrip("v")
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          # Grab everything between this version's heading and the next "## [" heading.
+          pattern = rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)"
+          m = re.search(pattern, text, re.M | re.S)
+          if m is None:
+              sys.exit(f"CHANGELOG.md has no section for {version} — add one before tagging.")
+          open("release-notes.md", "w", encoding="utf-8").write(m.group(1).strip() + "\n")
+          EOF
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --title "Blackline $GITHUB_REF_NAME" \
+            --notes-file release-notes.md

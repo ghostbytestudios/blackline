@@ -1,0 +1,25 @@
+# Weekly dependency update PRs. CI validates every bump; grouped so routine
+# minor/patch churn arrives as one reviewable PR per ecosystem, while majors
+# stay separate and obvious.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      python-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      js-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

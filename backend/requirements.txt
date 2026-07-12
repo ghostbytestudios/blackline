@@ -20,3 +20,4 @@ argon2-cffi==25.1.0
 
 # Dev / quality
 pytest==9.1.1
+ruff==0.15.21

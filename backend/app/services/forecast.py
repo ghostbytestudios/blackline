@@ -17,7 +17,7 @@ ledger flows on those accounts:
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -32,7 +32,7 @@ _DISCRETIONARY_WINDOW_DAYS = 60
 
 
 def build_forecast(db: Session, days: int = 30) -> ForecastSummary:
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     horizon = today + timedelta(days=days)
     eff = effective_account_types(db)
 
@@ -51,7 +51,7 @@ def build_forecast(db: Session, days: int = 30) -> ForecastSummary:
     recurring_keys = {s.merchant_key for s in out_streams}
 
     # Flat daily burn for everything the streams don't cover.
-    window_start = datetime.now(timezone.utc) - timedelta(days=_DISCRETIONARY_WINDOW_DAYS)
+    window_start = datetime.now(UTC) - timedelta(days=_DISCRETIONARY_WINDOW_DAYS)
     disc_total = 0
     for t in db.scalars(
         select(Transaction).where(

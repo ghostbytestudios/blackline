@@ -6,7 +6,6 @@ import pytest
 
 from app.security import crypto
 
-
 KEY = bytes(range(32))
 OTHER_KEY = bytes(range(1, 33))
 

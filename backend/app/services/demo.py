@@ -12,7 +12,7 @@ same code paths a real sync does.
 from __future__ import annotations
 
 import random
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -39,7 +39,7 @@ _HISTORY_DAYS = 185
 def _today() -> date:
     """UTC calendar date — matches how the dashboard buckets days, so seeded
     'today' activity actually lands on the dashboard's 'today'."""
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 def _month_mult(d: date) -> float:
@@ -86,7 +86,7 @@ def has_demo_data(db: Session) -> bool:
 
 
 def _dt(d: date, hour: int = 12) -> datetime:
-    return datetime.combine(d, time(hour), tzinfo=timezone.utc)
+    return datetime.combine(d, time(hour), tzinfo=UTC)
 
 
 def _monthly_dates(day_of_month: int, *, months: int = 7) -> list[date]:
@@ -130,7 +130,7 @@ class _Seeder:
             account_type=account_type,
             balance_minor=balance_minor,
             available_minor=balance_minor if balance_minor > 0 else None,
-            balance_date=datetime.now(timezone.utc),
+            balance_date=datetime.now(UTC),
         )
         self.db.add(acct)
         self.db.flush()
@@ -284,7 +284,7 @@ def seed(db: Session) -> dict:
         db.add(Holding(
             account_id=invest.id, external_id=f"{DEMO_PREFIX}{ext}", symbol=symbol,
             description=desc, shares=shares, market_value_minor=mv, cost_basis_minor=cost,
-            currency="USD", as_of=datetime.now(timezone.utc),
+            currency="USD", as_of=datetime.now(UTC),
         ))
 
     # --- Profile + budgets (some comfortably under, one on pace to bust) ---
@@ -332,7 +332,7 @@ def seed(db: Session) -> dict:
         target_date=_today() + timedelta(days=270),
         start_minor=1_100_000,  # savings balance ~90 days ago
         account_ids=str(savings.id),
-        created_at=datetime.now(timezone.utc) - timedelta(days=90),
+        created_at=datetime.now(UTC) - timedelta(days=90),
     ))
 
     db.commit()

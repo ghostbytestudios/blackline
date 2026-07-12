@@ -9,7 +9,7 @@ glance. All flows use the user-perspective classification from `insights.classif
 from __future__ import annotations
 
 import calendar
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -37,14 +37,14 @@ def _cumulative(daily: dict[int, int], through_day: int) -> list[DailyOutflowPoi
 
 
 def build_dashboard(db: Session) -> DashboardSummary:
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     this_start = _month_start(today)
     prev_start = _prev_month_start(today)
     account_type = effective_account_types(db)
 
     rows = db.scalars(
         select(Transaction).where(
-            Transaction.posted_at >= datetime.combine(prev_start, time.min, timezone.utc),
+            Transaction.posted_at >= datetime.combine(prev_start, time.min, UTC),
             Transaction.pending.is_(False),
             Transaction.is_split_parent.is_(False),
         )

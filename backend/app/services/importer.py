@@ -25,8 +25,8 @@ import html
 import io
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from datetime import UTC, date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -453,8 +453,8 @@ def commit_import(
         for txn in db.scalars(
             select(Transaction).where(
                 Transaction.account_id == account.id,
-                Transaction.posted_at >= datetime.combine(lo, datetime.min.time(), timezone.utc),
-                Transaction.posted_at <= datetime.combine(hi, datetime.max.time(), timezone.utc),
+                Transaction.posted_at >= datetime.combine(lo, datetime.min.time(), UTC),
+                Transaction.posted_at <= datetime.combine(hi, datetime.max.time(), UTC),
             )
         ):
             pool.setdefault(txn.amount_minor, []).append(txn.posted_at.date())
@@ -489,7 +489,7 @@ def commit_import(
             Transaction(
                 account_id=account.id,
                 external_id=external_id,
-                posted_at=datetime.combine(row.posted, datetime.min.time(), timezone.utc),
+                posted_at=datetime.combine(row.posted, datetime.min.time(), UTC),
                 amount_minor=row.amount_minor,
                 description=row.description,
                 payee=row.payee,

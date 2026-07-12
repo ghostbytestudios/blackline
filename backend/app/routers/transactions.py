@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
-
-from sqlalchemy import func, or_
 
 from ..db import get_db
 from ..deps import require_unlocked
@@ -120,9 +118,9 @@ def export_csv(
     if category is not None:
         stmt = stmt.where(Transaction.category == category)
     if start is not None:
-        stmt = stmt.where(Transaction.posted_at >= datetime.combine(start, time.min, timezone.utc))
+        stmt = stmt.where(Transaction.posted_at >= datetime.combine(start, time.min, UTC))
     if end is not None:
-        stmt = stmt.where(Transaction.posted_at <= datetime.combine(end, time.max, timezone.utc))
+        stmt = stmt.where(Transaction.posted_at <= datetime.combine(end, time.max, UTC))
 
     accounts = {a.id: a for a in db.scalars(select(Account))}
     buf = io.StringIO()
@@ -153,7 +151,7 @@ def export_csv(
             ]
         )
 
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    stamp = datetime.now(UTC).strftime("%Y-%m-%d")
     return Response(
         content=buf.getvalue(),
         media_type="text/csv; charset=utf-8",

@@ -19,9 +19,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import models  # noqa: F401  (register tables on Base.metadata)
 from app.config import get_settings
 from app.db import Base
-from app import models  # noqa: F401  (register tables on Base.metadata)
 
 
 @pytest.fixture()

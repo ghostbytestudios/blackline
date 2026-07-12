@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { RefreshCcw, Trash2, Sparkles } from "lucide-react";
 import {
   useBudgetHistory,
@@ -40,8 +40,13 @@ function BudgetRow({ budget }: { budget: BudgetStatus }) {
   const delBudget = useDeleteBudget();
   const [limit, setLimit] = useState(String(budget.limit_minor / 100));
 
-  // Keep the input in sync if the budget changes elsewhere (e.g. suggest).
-  useEffect(() => setLimit(String(budget.limit_minor / 100)), [budget.limit_minor]);
+  // Keep the input in sync if the budget changes elsewhere (e.g. suggest) —
+  // a render-time state adjustment, not an effect.
+  const [seenLimit, setSeenLimit] = useState(budget.limit_minor);
+  if (seenLimit !== budget.limit_minor) {
+    setSeenLimit(budget.limit_minor);
+    setLimit(String(budget.limit_minor / 100));
+  }
 
   const commit = () => {
     const dollars = parseFloat(limit);

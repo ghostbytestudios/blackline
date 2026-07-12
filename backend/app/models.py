@@ -7,7 +7,7 @@ Domain notes:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     BigInteger,
@@ -28,7 +28,7 @@ from .db import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Secret(Base):
@@ -66,10 +66,10 @@ class Account(Base):
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
 
-    transactions: Mapped[list["Transaction"]] = relationship(
+    transactions: Mapped[list[Transaction]] = relationship(
         back_populates="account", cascade="all, delete-orphan"
     )
-    holdings: Mapped[list["Holding"]] = relationship(
+    holdings: Mapped[list[Holding]] = relationship(
         back_populates="account", cascade="all, delete-orphan"
     )
 
@@ -107,7 +107,7 @@ class Transaction(Base):
     is_split_parent: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
-    account: Mapped["Account"] = relationship(back_populates="transactions")
+    account: Mapped[Account] = relationship(back_populates="transactions")
 
 
 class Holding(Base):
@@ -131,7 +131,7 @@ class Holding(Base):
     currency: Mapped[str] = mapped_column(String(8), default="USD")
     as_of: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    account: Mapped["Account"] = relationship(back_populates="holdings")
+    account: Mapped[Account] = relationship(back_populates="holdings")
 
 
 class CategoryRule(Base):

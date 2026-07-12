@@ -366,7 +366,7 @@ class ColumnMapping(BaseModel):
     flip_amounts: bool = False  # file records spending as positive
 
     @model_validator(mode="after")
-    def _needs_an_amount(self) -> "ColumnMapping":
+    def _needs_an_amount(self) -> ColumnMapping:
         if self.amount is None and self.debit is None and self.credit is None:
             raise ValueError("Map either an amount column or debit/credit columns.")
         return self

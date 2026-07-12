@@ -22,7 +22,7 @@ import sqlite3
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import create_engine, event
@@ -155,7 +155,7 @@ class SecureDatabase:
             return None
         backup_dir = settings.backup_dir
         backup_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         dest = backup_dir / f"{src.name}.{stamp}.bak"
         with self._io_lock:  # don't copy while persist() is mid-replace
             shutil.copy2(src, dest)

@@ -25,6 +25,8 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Lint
+        run: python -m ruff check .
       - name: Run tests
         # conftest.py sets fast Argon2 parameters before the app imports,
         # so no extra environment is needed here.
@@ -45,5 +47,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Lint
+        run: npm run lint
       - name: Type-check and build
         run: npm run build

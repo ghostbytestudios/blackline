@@ -17,7 +17,7 @@ from __future__ import annotations
 import base64
 import binascii
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit, urlunsplit
 
@@ -125,7 +125,7 @@ def _epoch_to_dt(value) -> datetime | None:  # noqa: ANN001
     if value is None:
         return None
     try:
-        return datetime.fromtimestamp(int(value), tz=timezone.utc)
+        return datetime.fromtimestamp(int(value), tz=UTC)
     except (ValueError, OSError, TypeError):
         return None
 

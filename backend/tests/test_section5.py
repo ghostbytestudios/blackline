@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
 
@@ -18,7 +18,7 @@ from .helpers import make_account, make_txn
 
 def _days_ago_same_month_or_prev(target_prev_month_day: int = 15) -> int:
     """Days back to land on the 15th of the previous calendar month."""
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     prev_mid = (today.replace(day=1) - timedelta(days=1)).replace(day=target_prev_month_day)
     return (today - prev_mid).days
 
@@ -85,7 +85,7 @@ class TestGoals:
 
     def test_on_track_math_with_deadline(self, db):
         a = make_account(db, balance_minor=0)
-        target_date = datetime.now(timezone.utc).date() + timedelta(days=300)
+        target_date = datetime.now(UTC).date() + timedelta(days=300)
         goal = create_goal(
             GoalIn(name="Trip", target_minor=100_000, target_date=target_date,
                    account_ids=[a.id]), db=db,

@@ -22,7 +22,7 @@ import re
 import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -125,7 +125,7 @@ def detect_streams(
     direction: str = "out",
     account_ids: set[int] | None = None,
 ) -> list[Stream]:
-    start = datetime.now(timezone.utc) - timedelta(days=days)
+    start = datetime.now(UTC) - timedelta(days=days)
     account_type = effective_account_types(db)
     flow = _recurring_outflow if direction == "out" else _recurring_inflow
 
@@ -197,7 +197,7 @@ def detect_streams(
         next_date = last_date + timedelta(days=round(period))
         # A stream that has missed a full cycle is very likely canceled — don't
         # keep projecting it (one period of grace tolerates billing-date drift).
-        if (datetime.now(timezone.utc).date() - next_date).days > period:
+        if (datetime.now(UTC).date() - next_date).days > period:
             continue
         charge = RecurringCharge(
             name=(txns[-1].payee or txns[-1].description or "")[:120],
@@ -208,7 +208,7 @@ def detect_streams(
             last_date=last_date,
             monthly_estimate_minor=monthly_estimate,
             next_date=next_date,
-            days_until=(next_date - datetime.now(timezone.utc).date()).days,
+            days_until=(next_date - datetime.now(UTC).date()).days,
         )
         results.append(Stream(charge=charge, merchant_key=key, period_days=period))
 

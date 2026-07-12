@@ -13,7 +13,6 @@ from app.models import Secret
 from app.security import crypto, vault
 from app.security.lock import AppLock, UnlockThrottle, app_lock
 
-
 KEY = os.urandom(32)
 WRONG_KEY = os.urandom(32)
 

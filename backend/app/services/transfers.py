@@ -18,7 +18,7 @@ Runs after every sync and statement import, and on demand via the API.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -34,7 +34,7 @@ def match_transfers(db: Session, days: int = 90) -> int:
 
     Flushes but does not commit — callers own the transaction.
     """
-    start = datetime.now(timezone.utc) - timedelta(days=days)
+    start = datetime.now(UTC) - timedelta(days=days)
     candidates = [
         t
         for t in db.scalars(

@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import require_unlocked
-from sqlalchemy import select
-
 from ..models import NetWorthSnapshot
 from ..schemas import (
     DashboardSummary,

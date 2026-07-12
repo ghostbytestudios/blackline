@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -90,7 +90,7 @@ class TestRecordSnapshot:
         assert snap.assets_minor == 500_000
         assert snap.liabilities_minor == 150_000
         assert snap.net_worth_minor == 350_000
-        assert snap.as_of == datetime.now(timezone.utc).date()
+        assert snap.as_of == datetime.now(UTC).date()
 
     def test_same_day_snapshot_upserts_not_duplicates(self, db):
         acct = make_account(db, balance_minor=100_000)

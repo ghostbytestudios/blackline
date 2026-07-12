@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import HTTPException
@@ -25,7 +25,7 @@ from .helpers import make_account, make_txn
 
 
 def _days_ago(n: float) -> datetime:
-    return datetime.now(timezone.utc) - timedelta(days=n)
+    return datetime.now(UTC) - timedelta(days=n)
 
 
 # --- transfer matching --------------------------------------------------------
@@ -242,7 +242,7 @@ def test_aggregations_count_children_not_parent(db):
     by_cat = {c.category: c.total_minor for c in summary.top_categories}
     assert by_cat == {"groceries": 7_000, "shopping": 3_000}
 
-    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+    month_key = datetime.now(UTC).strftime("%Y-%m")
     spend = monthly_category_spend(db, months=1)
     assert spend[(month_key, "groceries")] == 7_000
     assert spend[(month_key, "shopping")] == 3_000

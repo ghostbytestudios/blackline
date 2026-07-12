@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ def _month_key(dt: datetime) -> str:
 
 def _months_back(n: int) -> list[str]:
     """The last n calendar months (oldest first), including the current one."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     year, month = now.year, now.month
     out: list[str] = []
     for _ in range(n):
@@ -33,7 +33,7 @@ def _months_back(n: int) -> list[str]:
 def monthly_category_spend(db: Session, months: int) -> dict[tuple[str, str], int]:
     """(month, category) -> outflow, user cash-flow perspective, over the last N months."""
     start_month = _months_back(months)[0]
-    start = datetime(int(start_month[:4]), int(start_month[5:7]), 1, tzinfo=timezone.utc)
+    start = datetime(int(start_month[:4]), int(start_month[5:7]), 1, tzinfo=UTC)
     account_type = effective_account_types(db)
     out: dict[tuple[str, str], int] = defaultdict(int)
     for t in db.scalars(

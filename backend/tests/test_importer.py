@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 from sqlalchemy import select
@@ -193,7 +193,7 @@ def test_heuristic_dedup_against_synced_data(db):
     acct = make_account(db)
     # A synced transaction: same amount, one day off from the import row.
     synced = make_txn(db, acct, amount_minor=-645, payee="STARBUCKS")
-    synced.posted_at = datetime(2026, 6, 2, tzinfo=timezone.utc)
+    synced.posted_at = datetime(2026, 6, 2, tzinfo=UTC)
     db.flush()
     mapping = ColumnMapping(date=0, description=1, amount=2)
     result = _commit_csv(db, acct, CSV_BASIC, mapping)
@@ -204,7 +204,7 @@ def test_heuristic_dedup_against_synced_data(db):
 def test_skip_duplicates_false_imports_everything(db):
     acct = make_account(db)
     synced = make_txn(db, acct, amount_minor=-645)
-    synced.posted_at = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    synced.posted_at = datetime(2026, 6, 1, tzinfo=UTC)
     db.flush()
     mapping = ColumnMapping(date=0, description=1, amount=2)
     result = _commit_csv(db, acct, CSV_BASIC, mapping, skip_duplicates=False)

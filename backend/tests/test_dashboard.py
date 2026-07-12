@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.services.dashboard import build_dashboard
 
@@ -10,7 +10,7 @@ from .helpers import make_account, make_txn
 
 
 def _days_into_month() -> int:
-    return datetime.now(timezone.utc).day
+    return datetime.now(UTC).day
 
 
 def test_empty_vault_gives_zeroes(db):
@@ -43,7 +43,7 @@ def test_kpis_and_cumulative_series(db):
 
 def test_last_month_series_covers_full_month(db):
     acct = make_account(db)
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     mid_last_month = (today.replace(day=1) - timedelta(days=1)).replace(day=15)
     make_txn(
         db, acct, amount_minor=-10_000,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
@@ -37,7 +37,7 @@ def _to_out(db: Session, goal: Goal) -> GoalOut:
     required_monthly: int | None = None
     on_track: bool | None = None
     if goal.target_date is not None:
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         days_left = (goal.target_date - today).days
         remaining = max(0, goal.target_minor - current)
         required_monthly = int(remaining / max(days_left, 1) * 30.44) if remaining else 0

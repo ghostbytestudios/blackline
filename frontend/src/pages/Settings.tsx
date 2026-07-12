@@ -358,15 +358,18 @@ function IncomeCard() {
   const setProfile = useSetProfile();
   const [val, setVal] = useState("");
   const [netVal, setNetVal] = useState("");
-
-  useEffect(() => {
-    if (profile && profile.gross_annual_income_minor > 0) {
+  // Seed the inputs whenever a fresh profile arrives (state adjustment during
+  // render — the React-recommended replacement for a setState-in-effect sync).
+  const [seededFrom, setSeededFrom] = useState<typeof profile>(undefined);
+  if (profile && profile !== seededFrom) {
+    setSeededFrom(profile);
+    if (profile.gross_annual_income_minor > 0) {
       setVal(String(profile.gross_annual_income_minor / 100));
     }
-    if (profile?.net_monthly_income_minor) {
+    if (profile.net_monthly_income_minor) {
       setNetVal(String(profile.net_monthly_income_minor / 100));
     }
-  }, [profile]);
+  }
 
   const save = () => {
     const gross = parseFloat(val.replace(/,/g, ""));

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,7 +20,7 @@ def record_portfolio_snapshot(db: Session) -> None:
         return
     value = sum(mv or 0 for mv, _ in totals)
     cost = sum(cb or 0 for _, cb in totals)
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     snap = db.scalar(select(PortfolioSnapshot).where(PortfolioSnapshot.as_of == today))
     if snap is None:
         snap = PortfolioSnapshot(as_of=today)

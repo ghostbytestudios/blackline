@@ -112,7 +112,7 @@ def test_two_differing_amounts_not_a_bill(db):
 
 def test_irregular_intervals_rejected(db):
     acct = make_account(db)
-    for i, days in enumerate([2, 5, 40, 45]):
+    for days in (2, 5, 40, 45):
         make_txn(db, acct, amount_minor=-5000, days_ago=days, payee="Rando Shop")
     assert detect_recurring(db) == []
 
@@ -176,7 +176,9 @@ def test_canceled_subscription_stops_projecting(db):
     add_series(db, acct, amount=-1549, interval_days=30, count=4, payee="Old Gym")
     # Shift the whole series back 120 days: newest charge is ~4 months old.
     from datetime import timedelta
+
     from sqlalchemy import select
+
     from app.models import Transaction
     for t in db.scalars(select(Transaction)):
         t.posted_at = t.posted_at - timedelta(days=120)

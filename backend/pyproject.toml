@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"  # oldest supported interpreter (CI runs 3.14)
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import order, UP modernization, B bugbears.
+select = ["E", "W", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # long lines: docstrings/messages read better unwrapped; code stays ~100
+    "B008",  # FastAPI's `Depends(...)` in defaults is idiomatic, not a bug
+]
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/*" = ["I"]  # alembic templates keep their conventional import layout
