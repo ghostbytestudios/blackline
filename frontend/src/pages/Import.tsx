@@ -10,7 +10,8 @@ import {
 import { Card, PageHeader } from "../components/ui";
 import type { ColumnMapping, ImportPreview } from "../lib/types";
 
-type Role = "ignore" | "date" | "amount" | "debit" | "credit" | "payee" | "description" | "memo";
+export type Role =
+  | "ignore" | "date" | "amount" | "debit" | "credit" | "payee" | "description" | "memo";
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "ignore", label: "— ignore —" },
@@ -25,7 +26,7 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 const ACCOUNT_TYPES = ["checking", "savings", "credit", "cash", "loan", "investment", "other"];
 
-function rolesFromSuggestion(m: ColumnMapping | null | undefined, width: number): Role[] {
+export function rolesFromSuggestion(m: ColumnMapping | null | undefined, width: number): Role[] {
   const roles: Role[] = Array(width).fill("ignore");
   if (!m) return roles;
   const assign = (idx: number | null | undefined, role: Role) => {
@@ -41,7 +42,7 @@ function rolesFromSuggestion(m: ColumnMapping | null | undefined, width: number)
   return roles;
 }
 
-function buildMapping(roles: Role[], dateFormat: string | null, flip: boolean): ColumnMapping | null {
+export function buildMapping(roles: Role[], dateFormat: string | null, flip: boolean): ColumnMapping | null {
   const idx = (r: Role) => {
     const i = roles.indexOf(r);
     return i === -1 ? null : i;

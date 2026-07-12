@@ -35,7 +35,8 @@ import {
 } from "../lib/chartTheme";
 import type { BudgetStatus } from "../lib/types";
 
-function BudgetRow({ budget }: { budget: BudgetStatus }) {
+// Exported for component tests.
+export function BudgetRow({ budget }: { budget: BudgetStatus }) {
   const setBudget = useSetBudget();
   const delBudget = useDeleteBudget();
   const [limit, setLimit] = useState(String(budget.limit_minor / 100));

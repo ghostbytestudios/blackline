@@ -45,3 +45,8 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# E2E artifacts
+frontend/.e2e-data/
+frontend/test-results/
+frontend/playwright-report/

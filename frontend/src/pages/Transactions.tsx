@@ -103,8 +103,9 @@ function AnnotateRow({ txn, onDone }: { txn: Transaction; onDone: () => void }) 
 }
 
 /** Inline editor: divide one charge across categories. Amounts are entered as
- * positive dollars; the original's direction is applied on save. */
-function SplitRow({
+ * positive dollars; the original's direction is applied on save.
+ * Exported for component tests. */
+export function SplitRow({
   txn,
   children,
   onDone,

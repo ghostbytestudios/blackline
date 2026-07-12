@@ -34,7 +34,10 @@ All of these must pass before a PR merges (CI runs them on every push):
 cd backend && python -m ruff check . # backend lint
 cd backend && python -m pytest       # backend test suite
 cd frontend && npm run lint          # eslint (typescript + react-hooks rules)
+cd frontend && npm test              # component tests (vitest + Testing Library)
 cd frontend && npm run build         # TypeScript check + production build
+cd frontend && npm run e2e           # Playwright smoke vs a real backend (needs
+                                     # `npx playwright install chromium` once)
 ```
 
 Please add tests for any backend behavior change. Tests use a plain in-memory
