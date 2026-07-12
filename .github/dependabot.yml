@@ -18,6 +18,11 @@ updates:
     groups:
       js-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # TS 7 (native compiler) builds fine but typescript-eslint can't load
+      # against it yet — revisit when typed linting supports it.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /

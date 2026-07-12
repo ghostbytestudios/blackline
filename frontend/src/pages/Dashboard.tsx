@@ -172,7 +172,7 @@ export default function Dashboard() {
                 domain={[0, "auto"]}
               />
               <Tooltip
-                formatter={(v: number) => `$${v.toFixed(2)}`}
+                formatter={(v) => `$${Number(v).toFixed(2)}`}
                 labelFormatter={(day) => `Day ${day}`}
                 contentStyle={TOOLTIP_STYLE}
                 itemStyle={TOOLTIP_ITEM_STYLE}
@@ -319,7 +319,7 @@ export default function Dashboard() {
                 width={56}
               />
               <Tooltip
-                formatter={(v: number) => `$${v.toFixed(2)}`}
+                formatter={(v) => `$${Number(v).toFixed(2)}`}
                 contentStyle={TOOLTIP_STYLE}
                 itemStyle={TOOLTIP_ITEM_STYLE}
                 labelStyle={TOOLTIP_LABEL_STYLE}

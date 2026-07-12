@@ -33,7 +33,7 @@ function ValueHistoryCard() {
           <XAxis dataKey="label" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} />
           <YAxis tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} domain={["auto", "auto"]} />
           <Tooltip
-            formatter={(v: number) => `$${v.toFixed(2)}`}
+            formatter={(v) => `$${Number(v).toFixed(2)}`}
             contentStyle={TOOLTIP_STYLE}
             itemStyle={TOOLTIP_ITEM_STYLE}
             labelStyle={TOOLTIP_LABEL_STYLE}
@@ -111,7 +111,7 @@ export default function Investments() {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(v: number) => `$${v.toFixed(2)}`}
+                    formatter={(v) => `$${Number(v).toFixed(2)}`}
                     contentStyle={TOOLTIP_STYLE}
                     itemStyle={TOOLTIP_ITEM_STYLE}
                     labelStyle={TOOLTIP_LABEL_STYLE}

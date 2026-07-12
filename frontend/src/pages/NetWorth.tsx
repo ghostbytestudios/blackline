@@ -65,7 +65,7 @@ function ForecastCard() {
           <XAxis dataKey="label" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} minTickGap={40} />
           <YAxis tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} domain={["auto", "auto"]} />
           <Tooltip
-            formatter={(v: number) => `$${v.toFixed(2)}`}
+            formatter={(v) => `$${Number(v).toFixed(2)}`}
             contentStyle={TOOLTIP_STYLE}
             itemStyle={TOOLTIP_ITEM_STYLE}
             labelStyle={TOOLTIP_LABEL_STYLE}
@@ -161,7 +161,7 @@ export default function NetWorth() {
             <XAxis dataKey="label" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} />
             <YAxis tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={AXIS_LINE} />
             <Tooltip
-              formatter={(v: number) => `$${v.toFixed(2)}`}
+              formatter={(v) => `$${Number(v).toFixed(2)}`}
               contentStyle={TOOLTIP_STYLE}
               itemStyle={TOOLTIP_ITEM_STYLE}
               labelStyle={TOOLTIP_LABEL_STYLE}
