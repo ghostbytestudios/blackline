@@ -155,7 +155,9 @@ class SecureDatabase:
             return None
         backup_dir = settings.backup_dir
         backup_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        # Microseconds keep names unique even for rotations within the same second
+        # (e.g. the pre-restore snapshot taken right after a fresh backup).
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S-%f")
         dest = backup_dir / f"{src.name}.{stamp}.bak"
         with self._io_lock:  # don't copy while persist() is mid-replace
             shutil.copy2(src, dest)
@@ -163,6 +165,25 @@ class SecureDatabase:
         for old in backups[: -settings.backup_count]:
             old.unlink(missing_ok=True)
         return dest
+
+    def restore_from(self, path: Path, key: bytes) -> None:
+        """Replace the live DB with a backup blob and reopen it.
+
+        The backup is read and decrypt-verified in memory *before* anything on disk
+        changes, so a wrong-key backup (e.g. made before a passphrase change) is
+        rejected with no side effects. The current blob is snapshotted into the
+        backup rotation first, making the restore itself reversible.
+        """
+        blob = path.read_bytes()
+        nonce, ciphertext = blob[: crypto.NONCE_LEN], blob[crypto.NONCE_LEN :]
+        crypto.decrypt(key, nonce, ciphertext, aad=_DB_AAD)  # raises DecryptionError
+        self.rotate_backup()  # pre-restore snapshot (may prune `path` — blob is in memory)
+        self.close()
+        enc_path = get_settings().db_enc_path
+        tmp = enc_path.with_suffix(".tmp")
+        tmp.write_bytes(blob)
+        os.replace(tmp, enc_path)
+        self.open(key)  # migrations bring an older backup schema up to head
 
     def close(self) -> None:
         """Drop the in-memory DB and zeroize references. Committed data is already persisted."""

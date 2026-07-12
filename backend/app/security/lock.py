@@ -9,6 +9,7 @@ passphrase via a verifier secret.
 from __future__ import annotations
 
 import hmac
+import os
 import shutil
 import threading
 import time
@@ -138,6 +139,37 @@ class AppLock:
             secure_db.rekey(new_key)
             self._key = new_key
             return True
+
+    def restore_backup(self, path) -> None:
+        """Swap the vault for a rotated backup blob and reopen it under the current key.
+
+        Raises crypto.DecryptionError (without touching disk) if the backup was
+        written under a different key — e.g. before a passphrase change.
+        """
+        with self._mutex:
+            if self._key is None or not secure_db.is_open:
+                raise LockedError("unlock before restoring a backup")
+            secure_db.restore_from(path, self._key)
+
+    def import_vault(self, salt: bytes, blob: bytes) -> None:
+        """Replace the on-disk vault with an imported bundle. Leaves the app locked.
+
+        The bundle is opaque ciphertext; the passphrase it was exported under is the
+        only key. Salt is written before the blob: a crash between the two writes
+        leaves a vault that fails to unlock (re-import to recover) rather than one
+        that silently opens the wrong data.
+        """
+        with self._mutex:
+            secure_db.close()
+            self._key = None
+            settings = get_settings()
+            settings.ensure_dirs()
+            tmp = settings.salt_path.with_suffix(".tmp")
+            tmp.write_bytes(salt)
+            os.replace(tmp, settings.salt_path)
+            tmp = settings.db_enc_path.with_suffix(".tmp")
+            tmp.write_bytes(blob)
+            os.replace(tmp, settings.db_enc_path)
 
     def lock(self) -> None:
         with self._mutex:

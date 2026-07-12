@@ -22,6 +22,14 @@ breaking changes).
   payroll deposits — instead of a flat 75%-of-gross estimate.
 - "Suggest budgets (50/30/20)" is always visible on Spending and asks for your
   income inline when it isn't set yet.
+- Activity Log in Settings: the local audit trail (unlocks, syncs, imports,
+  restores, exports) is now visible, newest first, with success/failure marks.
+- Backup restore: the automatic pre-sync snapshots are listed in Settings and
+  can be restored with a typed confirmation; the current state is snapshotted
+  first, so a restore can itself be undone.
+- Portable vault export/import: download the whole encrypted vault as a single
+  `.blackline` file from Settings and import it from the lock screen on any
+  machine — your passphrase is the only key.
 
 ### Changed
 

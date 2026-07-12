@@ -94,7 +94,8 @@ login — to a company's cloud. Blackline takes the opposite approach:
 | Egress | Exactly one outbound destination (the SimpleFIN Bridge host), only during a sync you start. |
 | Brute-force resistance | Escalating delays after repeated failed unlock attempts (on top of Argon2id's ~1s/attempt cost). |
 | Auto-lock | The vault locks itself after 15 idle minutes (configurable). |
-| Backups | Each sync first rotates a timestamped copy of the encrypted blob into `data/backups/` (same ciphertext-only safety). |
+| Backups | Each sync first rotates a timestamped copy of the encrypted blob into `data/backups/` (same ciphertext-only safety) — and any of them can be **restored from Settings** with a typed confirmation. |
+| Audit trail | Every sensitive operation (unlock, sync, import, restore, export) is logged inside the encrypted vault and viewable in **Settings → Activity Log**. Nothing leaves your machine. |
 | Forgotten passphrase | No recovery — by design. A guarded **reset** on the lock screen destroys the vault so you can start over. |
 
 The full threat model — including known trade-offs — is in **[SECURITY.md](./SECURITY.md)**.
@@ -253,7 +254,7 @@ token needed.
 | **Recurring** | Detected subscriptions and recurring charges, plus bills due in the next 14 days. |
 | **Net Worth** | Historical net worth once a few snapshots exist (otherwise a labeled estimate), plus a 30-day cash forecast. |
 | **Insights** | Severity-grouped cards: spikes, budget overruns, idle cash, and budgeting-ratio guidance. |
-| **Settings** | Connect/disconnect SimpleFIN, category rules manager, transfer matching, demo mode, CSV export, gross + take-home income, change passphrase. |
+| **Settings** | Connect/disconnect SimpleFIN, category rules manager, transfer matching, demo mode, CSV + encrypted vault export, backup restore, activity log, gross + take-home income, change passphrase. |
 
 **Locking:** Click **Lock Vault** in the sidebar whenever you step away — or just walk
 away: the vault auto-locks after 15 idle minutes. Either way, the decryption key is
@@ -277,10 +278,16 @@ All of your data lives in **`backend/data/`**:
 - `backups/` — timestamped copies of the encrypted blob, rotated automatically before
   each sync (the newest five are kept by default).
 
-**Both files are required to decrypt**, and both are excluded from git. To back up,
-copy the entire `backend/data/` folder somewhere safe. To restore, put the files back
-and unlock with the same passphrase. Because the database is encrypted, the backup is
-safe to store on external/cloud storage — but your passphrase is still the only key.
+**Both files are required to decrypt**, and both are excluded from git.
+
+The easiest backup is **Settings → Export Data → Download vault export**: a single
+`.blackline` file bundling both, importable from the lock screen on any machine —
+no filesystem digging. (Copying the whole `backend/data/` folder works too.) Because
+everything is encrypted, either backup is safe to store on external/cloud storage —
+but your passphrase is still the only key.
+
+To rewind to an earlier state, the automatic pre-sync snapshots are listed under
+**Settings → Backups** and restore with one typed confirmation.
 
 ---
 

@@ -26,6 +26,7 @@ from .routers import (
     imports,
     insights,
     profile,
+    system,
     transactions,
 )
 from .security.lock import app_lock
@@ -110,6 +111,7 @@ for r in (
     demo.router,
     goals.router,
     imports.router,
+    system.router,
 ):
     app.include_router(r, prefix="/api")
 

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import {
+  Archive,
   ArrowLeftRight,
   CheckCircle2,
   RefreshCw,
+  History,
   Link2,
   AlertCircle,
   KeyRound,
@@ -12,15 +14,19 @@ import {
   FlaskConical,
   ListChecks,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import {
   useAddRule,
+  useAuditLog,
+  useBackups,
   useChangePassphrase,
   useConnect,
   useDeleteRule,
   useMatchTransfers,
   useProfile,
   useRemoveDemo,
+  useRestoreBackup,
   useRules,
   useSeedDemo,
   useSetProfile,
@@ -29,7 +35,7 @@ import {
 } from "../hooks/useApi";
 import { api, ApiError } from "../lib/api";
 import { Card, PageHeader } from "../components/ui";
-import { formatDate, formatMoney } from "../lib/format";
+import { formatBytes, formatDate, formatDateTime, formatMoney } from "../lib/format";
 import { useQueryClient } from "@tanstack/react-query";
 
 /** A setup token is base64 of the SimpleFIN claim URL — sniff it so we can auto-fill. */
@@ -219,7 +225,11 @@ export default function Settings() {
 
       <ExportCard />
 
+      <BackupsCard />
+
       <ChangePassphraseCard />
+
+      <ActivityCard />
 
       <Card className="mt-5">
         <div className="font-semibold text-slate-100">Security</div>
@@ -571,6 +581,211 @@ function ExportCard() {
           Download CSV
         </a>
       </div>
+
+      <div className="mt-4 border-t border-ink-700 pt-4">
+        <div className="text-sm font-semibold text-slate-200">Full vault (encrypted)</div>
+        <p className="mt-1 text-sm text-slate-400">
+          Everything — accounts, transactions, budgets, history, settings — in a single
+          encrypted <span className="font-mono text-xs">.blackline</span> file. Move it to
+          another machine and import it from the lock screen; your passphrase is the only
+          key.
+        </p>
+        <a
+          href="/api/vault/export"
+          download
+          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-ink-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-ink-700/60"
+        >
+          <Download className="h-4 w-4" />
+          Download vault export
+        </a>
+      </div>
+    </Card>
+  );
+}
+
+const RESTORE_CONFIRM_PHRASE = "RESTORE BACKUP";
+
+function BackupsCard() {
+  const { data: backups } = useBackups();
+  const restore = useRestoreBackup();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState("");
+  const err = restore.error instanceof ApiError ? restore.error.message : null;
+  const selectedInfo = (backups ?? []).find((b) => b.name === selected);
+
+  const doRestore = () =>
+    restore.mutate(
+      { name: selected!, confirm },
+      {
+        onSuccess: () => {
+          setSelected(null);
+          setConfirm("");
+        },
+      },
+    );
+
+  return (
+    <Card className="mt-5">
+      <div className="flex items-center gap-2 font-semibold text-slate-100">
+        <Archive className="h-5 w-5 text-accent" />
+        Backups
+      </div>
+      <p className="mt-2 text-sm text-slate-400">
+        A snapshot of the encrypted vault is taken automatically before every sync.
+        Restoring rewinds your data to that moment — and the current state is snapshotted
+        first, so a restore can itself be undone.
+      </p>
+
+      {(backups ?? []).length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">
+          No backups yet — one appears after your first sync.
+        </p>
+      ) : (
+        <table className="mt-3 w-full text-sm">
+          <thead className="border-b border-ink-700 text-left text-xs uppercase tracking-wider text-slate-500">
+            <tr>
+              <th className="py-2 pr-3 font-semibold">Taken</th>
+              <th className="py-2 pr-3 text-right font-semibold">Size</th>
+              <th className="w-24 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ink-700">
+            {(backups ?? []).map((b) => (
+              <tr key={b.name}>
+                <td className="py-2 pr-3 text-slate-300">{formatDateTime(b.created_at)}</td>
+                <td className="py-2 pr-3 text-right font-mono text-xs tnum text-slate-400">
+                  {formatBytes(b.size_bytes)}
+                </td>
+                <td className="py-2 text-right">
+                  <button
+                    onClick={() => {
+                      setSelected(b.name);
+                      setConfirm("");
+                      restore.reset();
+                    }}
+                    className="rounded-lg border border-ink-700 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-ink-700/60"
+                  >
+                    Restore…
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {selected && (
+        <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4">
+          <p className="text-sm text-amber-200/90">
+            Restore the backup from{" "}
+            <span className="font-semibold">{formatDateTime(selectedInfo?.created_at)}</span>?
+            Anything recorded since then disappears from view (a snapshot of right now is
+            saved first). Type{" "}
+            <span className="font-mono font-semibold text-amber-300">
+              {RESTORE_CONFIRM_PHRASE}
+            </span>{" "}
+            to confirm:
+          </p>
+          <input
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder={RESTORE_CONFIRM_PHRASE}
+            className="mt-2 w-full rounded-lg border border-amber-500/40 bg-transparent px-3 py-2 font-mono text-sm text-amber-100 placeholder-amber-200/30 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+          />
+          {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={doRestore}
+              disabled={confirm !== RESTORE_CONFIRM_PHRASE || restore.isPending}
+              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-40"
+            >
+              {restore.isPending ? "Restoring…" : "Restore this backup"}
+            </button>
+            <button
+              onClick={() => setSelected(null)}
+              className="rounded-lg border border-amber-500/30 px-4 py-2 text-sm text-amber-200/80 hover:bg-amber-900/40"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {restore.isSuccess && !selected && (
+        <p className="mt-3 text-sm text-emerald-400">Backup restored.</p>
+      )}
+    </Card>
+  );
+}
+
+const EVENT_LABELS: Record<string, string> = {
+  unlock: "Vault unlocked",
+  lock: "Vault locked",
+  auto_lock: "Auto-locked (idle)",
+  change_passphrase: "Passphrase changed",
+  sync: "Bank sync",
+  connect: "Bank connected",
+  disconnect: "Bank disconnected",
+  import: "Statement import",
+  demo_removed: "Demo data removed",
+  restore_backup: "Backup restored",
+  vault_export: "Vault exported",
+};
+
+function ActivityCard() {
+  const [limit, setLimit] = useState(10);
+  const { data } = useAuditLog(limit);
+
+  return (
+    <Card className="mt-5">
+      <div className="flex items-center gap-2 font-semibold text-slate-100">
+        <History className="h-5 w-5 text-accent" />
+        Activity Log
+      </div>
+      <p className="mt-2 text-sm text-slate-400">
+        Every sensitive operation — unlocks, syncs, imports, restores — is recorded
+        locally inside the encrypted vault. Nothing here ever leaves your machine.
+      </p>
+
+      {data && data.items.length > 0 ? (
+        <>
+          <table className="mt-3 w-full text-sm">
+            <tbody className="divide-y divide-ink-700">
+              {data.items.map((e) => (
+                <tr key={e.id}>
+                  <td className="w-5 py-2 pr-2">
+                    {e.success ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-400" />
+                    )}
+                  </td>
+                  <td className="py-2 pr-3 text-slate-300">
+                    {EVENT_LABELS[e.event] ?? e.event}
+                    {e.detail && (
+                      <span className="ml-2 text-xs text-slate-500" title={e.detail}>
+                        {e.detail.length > 60 ? `${e.detail.slice(0, 60)}…` : e.detail}
+                      </span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap py-2 text-right text-xs text-slate-500">
+                    {formatDateTime(e.at)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {data.total > data.items.length && (
+            <button
+              onClick={() => setLimit((l) => l + 25)}
+              className="mt-3 text-sm text-accent-soft hover:underline"
+            >
+              Show more ({data.total - data.items.length} older)
+            </button>
+          )}
+        </>
+      ) : (
+        <p className="mt-3 text-sm text-slate-500">No activity recorded yet.</p>
+      )}
     </Card>
   );
 }

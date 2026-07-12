@@ -27,6 +27,41 @@ class ResetVaultRequest(BaseModel):
     confirm: str
 
 
+# --- Audit & data safety ---
+class AuditEntryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    at: datetime
+    event: str
+    detail: str
+    success: bool
+
+
+class AuditPageOut(BaseModel):
+    total: int
+    items: list[AuditEntryOut]
+
+
+class BackupOut(BaseModel):
+    name: str
+    created_at: datetime
+    size_bytes: int
+
+
+class RestoreBackupRequest(BaseModel):
+    """Restores a rotated backup. `confirm` must be the exact phrase, typed by the user."""
+
+    name: str = Field(min_length=1, max_length=255)
+    confirm: str
+
+
+class VaultImportRequest(BaseModel):
+    """`bundle` is the raw text of a .blackline export file (JSON)."""
+
+    bundle: str = Field(min_length=1)
+    confirm: str = ""  # required (typed phrase) only when a vault already exists
+
+
 class MerchantSummary(BaseModel):
     name: str
     category: str

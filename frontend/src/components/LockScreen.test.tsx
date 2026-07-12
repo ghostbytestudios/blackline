@@ -6,17 +6,25 @@ import LockScreen from "./LockScreen";
 
 const mockUnlock = vi.fn();
 const mockReset = vi.fn();
+const mockImport = vi.fn();
 let status: { initialized: boolean; unlocked: boolean } = { initialized: true, unlocked: false };
 
 vi.mock("../hooks/useApi", () => ({
   useStatus: () => ({ data: status }),
   useUnlock: () => ({ mutate: mockUnlock, isPending: false, error: null }),
   useResetVault: () => ({ mutate: mockReset, isPending: false, error: null }),
+  useImportVault: () => ({
+    mutate: mockImport,
+    isPending: false,
+    error: null,
+    reset: vi.fn(),
+  }),
 }));
 
 beforeEach(() => {
   mockUnlock.mockClear();
   mockReset.mockClear();
+  mockImport.mockClear();
   status = { initialized: true, unlocked: false };
 });
 
@@ -60,5 +68,44 @@ describe("LockScreen", () => {
     expect(destroy).toBeEnabled();
     await userEvent.click(destroy);
     expect(mockReset).toHaveBeenCalledWith("DELETE MY DATA");
+  });
+
+  it("requires the replace phrase to import over an existing vault", async () => {
+    render(<LockScreen />);
+    await userEvent.click(screen.getByText("Import a vault export"));
+    const importBtn = screen.getByRole("button", { name: "Import vault" });
+    expect(importBtn).toBeDisabled();
+
+    const file = new File(['{"format":"blackline-vault"}'], "old-laptop.blackline");
+    await userEvent.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      file,
+    );
+    await screen.findByText(/Selected: old-laptop.blackline/);
+    expect(importBtn).toBeDisabled(); // file alone is not enough
+
+    await userEvent.type(screen.getByPlaceholderText("REPLACE MY DATA"), "REPLACE MY DATA");
+    expect(importBtn).toBeEnabled();
+    await userEvent.click(importBtn);
+    expect(mockImport).toHaveBeenCalledWith(
+      { bundle: '{"format":"blackline-vault"}', confirm: "REPLACE MY DATA" },
+      expect.anything(),
+    );
+  });
+
+  it("skips the confirmation phrase when no vault exists yet", async () => {
+    status = { initialized: false, unlocked: false };
+    render(<LockScreen />);
+    await userEvent.click(screen.getByText("Import a vault export"));
+
+    const file = new File(["bundle-text"], "move.blackline");
+    await userEvent.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      file,
+    );
+    await screen.findByText(/Selected: move.blackline/);
+
+    expect(screen.queryByPlaceholderText("REPLACE MY DATA")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import vault" })).toBeEnabled();
   });
 });

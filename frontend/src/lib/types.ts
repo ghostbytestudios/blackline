@@ -223,6 +223,27 @@ export interface SyncResult {
   errors: string[];
 }
 
+// --- Audit & data safety ---
+
+export interface AuditEntry {
+  id: number;
+  at: string;
+  event: string;
+  detail: string;
+  success: boolean;
+}
+
+export interface AuditPage {
+  total: number;
+  items: AuditEntry[];
+}
+
+export interface BackupInfo {
+  name: string;
+  created_at: string;
+  size_bytes: number;
+}
+
 // --- Statement import (CSV/OFX) ---
 
 export interface ColumnMapping {

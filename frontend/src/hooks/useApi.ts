@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import type {
   Account,
+  AuditPage,
+  BackupInfo,
   BudgetHistory,
   BudgetStatus,
   CategoryRule,
@@ -382,6 +384,38 @@ export function useCreateManualAccount() {
     mutationFn: (b: { name: string; account_type?: string; balance_minor?: number }) =>
       api.post<Account>("/accounts/manual", b),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["accounts"] }),
+  });
+}
+
+export function useAuditLog(limit = 20, offset = 0) {
+  return useQuery({
+    queryKey: ["audit", limit, offset],
+    queryFn: () => api.get<AuditPage>(`/audit?limit=${limit}&offset=${offset}`),
+  });
+}
+
+export function useBackups() {
+  return useQuery({
+    queryKey: ["backups"],
+    queryFn: () => api.get<BackupInfo[]>("/backups"),
+  });
+}
+
+export function useRestoreBackup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: { name: string; confirm: string }) =>
+      api.post<Status>("/backups/restore", b),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useImportVault() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: { bundle: string; confirm?: string }) =>
+      api.post<Status>("/vault/import", b),
+    onSuccess: () => qc.invalidateQueries(),
   });
 }
 
