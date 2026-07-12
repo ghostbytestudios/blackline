@@ -80,7 +80,7 @@ jobs:
       - name: Run E2E smoke tests
         working-directory: frontend
         run: npx playwright test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-traces
