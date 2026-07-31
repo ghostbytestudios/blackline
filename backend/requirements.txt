@@ -1,6 +1,6 @@
 # Pinned to versions with Python 3.14 (cp314) wheels — verified working on Windows.
 # Web framework / server
-fastapi==0.139.0
+fastapi==0.139.2
 uvicorn[standard]==0.51.0
 
 # Data / validation
@@ -20,4 +20,4 @@ argon2-cffi==25.1.0
 
 # Dev / quality
 pytest==9.1.1
-ruff==0.15.21
+ruff==0.15.22
